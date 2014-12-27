@@ -2,8 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bluesky.osprey.pttapp" >
 
-    <!-- very important, otherwise the app would fail to create AudioRecord instance
-     and result in AudioFlinger error -1 -->
+    <!--
+     very important, otherwise the app would fail to create AudioRecord instance
+     and result in AudioFlinger error -1
+    -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -23,8 +25,10 @@
         </activity>
 
         <!-- Link Layer Signaling Service, the core of PTTApp -->
-        <service android:name=".SignalingService" />
-
+        <service
+            android:name=".SignalingService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

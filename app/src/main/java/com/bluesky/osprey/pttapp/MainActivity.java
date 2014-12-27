@@ -2,6 +2,8 @@ package com.bluesky.osprey.pttapp;
 
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.content.Intent;
+import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -36,4 +38,10 @@ public class MainActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
-}
+
+    public void onStartPTTService(View view) {
+        Intent intent = new Intent(this, SignalingService.class);
+        startService(intent);
+    }
+
+    }
