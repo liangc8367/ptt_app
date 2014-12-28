@@ -26,7 +26,7 @@
 
         <!-- Link Layer Signaling Service, the core of PTTApp -->
         <service
-            android:name=".SignalingService"
+            android:name=".PTTAppService"
             android:enabled="true"
             android:exported="false" />
     </application>

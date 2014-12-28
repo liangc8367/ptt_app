@@ -40,7 +40,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void onStartPTTService(View view) {
-        Intent intent = new Intent(this, SignalingService.class);
+        Intent intent = new Intent(this, PTTAppService.class);
         startService(intent);
     }
 
