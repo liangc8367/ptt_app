@@ -24,6 +24,7 @@ public class PTTSignaling extends Handler{
         super(svcLooper);
         mUdpService = udpService;
         mUdpService.setCompletionHandler(mUdpRxHandler);
+        mStateNode  =
     }
 
 
@@ -35,6 +36,7 @@ public class PTTSignaling extends Handler{
 
     /** private members */
     State       mState  = State.UNREGISTERED;
+    StateNode   mStateNode = null;
     UDPService  mUdpService = null;
     UdpRxHandler    mUdpRxHandler   = null;
 
@@ -59,6 +61,31 @@ public class PTTSignaling extends Handler{
         CALL_INITIATIATED,
         CALL_TRANSMITTING
     };
+
+    /** encapsulation of a state */
+    private interface StateNode{
+        public State handleMessage(Message message);
+        public void  entry();
+        public void  exit();
+    }
+
+    private class StateUnregistered implements StateNode{
+
+        @Override
+        public State handleMessage(Message message) {
+            return null;
+        }
+
+        @Override
+        public void entry() {
+
+        }
+
+        @Override
+        public void exit() {
+
+        }
+    }
 
 
 }
