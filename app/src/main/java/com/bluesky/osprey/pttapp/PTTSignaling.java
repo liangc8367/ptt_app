@@ -1,9 +1,15 @@
 package com.bluesky.osprey.pttapp;
 
+import java.util.EnumMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.net.DatagramPacket;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
+
+
 
 /**
  * Signaling of PTT App, responsible for:
@@ -24,21 +30,65 @@ public class PTTSignaling extends Handler{
         super(svcLooper);
         mUdpService = udpService;
         mUdpService.setCompletionHandler(mUdpRxHandler);
-        mStateNode  =
+
+        mTimer  = new Timer("SignalingTimer");
+
+        initializeStateMachine();
     }
 
 
     /** private methods */
+    private void initializeStateMachine(){
+        mStateMap = new EnumMap<State, StateNode>(State.class);
+        StateNode aState;
+        aState = new StateUnregistered();
+        mStateMap.put(State.UNREGISTERED, aState);
+        aState = new StateRegistered();
+        mStateMap.put(State.REGISTERED, aState);
+        aState = new StateCallReceiving();
+        mStateMap.put(State.CALL_RECEIVING, aState);
+        aState = new StateCallHang();
+        mStateMap.put(State.CALL_HANG, aState);
+        aState = new StateCallInitiatiated();
+        mStateMap.put(State.CALL_INITIATIATED, aState);
+        aState = new StateCallTransmitting();
+        mStateMap.put(State.CALL_TRANSMITTING, aState);
+
+        mState      = State.UNREGISTERED;
+        mStateNode  = mStateMap.get(mState);
+        mStateNode.entry();
+    }
+
     @Override
     public void handleMessage(Message message){
-
+        State oldState = mState;
+        State newState = mStateNode.handleMessage(message);
+        if( oldState != newState ){
+            mStateNode.exit();
+            mState = newState;
+            mStateNode = mStateMap.get(mState);
+            mStateNode.entry();
+        }
     }
 
     /** private members */
+    private final static String TAG=GlobalConstants.TAG + ":Signaling";
+    private final static int MSG_RXED_PACKET = 1;
+    private final static int MSG_TIME_EXPIRED = 2;
+
+    private final static int REGISTRATION_RETRY_TIME    = 100;  // 100 milliseconds
+    private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
+    private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
+
+
     State       mState  = State.UNREGISTERED;
     StateNode   mStateNode = null;
+    EnumMap<State, StateNode>   mStateMap;
+
     UDPService  mUdpService = null;
     UdpRxHandler    mUdpRxHandler   = null;
+
+    Timer       mTimer;
 
     private class UdpRxHandler implements UDPService.CompletionHandler{
         @Override
@@ -49,10 +99,11 @@ public class PTTSignaling extends Handler{
     }
 
 
-
-    private final static String TAG=GlobalConstants.TAG + ":Signaling";
-    private final static int MSG_RXED_PACKET = 1;
-
+    /** state machine for PTT Signaling
+     *  @TODO: Right now, I just quickly implemented the state machine directly in java language.
+     *         If I have enough time, I would replace the implementation using SMC(State Machine
+     *         Compiler).
+     */
     private enum State {
         UNREGISTERED,
         REGISTERED,
@@ -62,14 +113,80 @@ public class PTTSignaling extends Handler{
         CALL_TRANSMITTING
     };
 
-    /** encapsulation of a state */
-    private interface StateNode{
-        public State handleMessage(Message message);
-        public void  entry();
-        public void  exit();
+    /** state abstraction */
+    private abstract class StateNode{
+        abstract State handleMessage(Message message);
+        abstract void  entry();
+        abstract void  exit();
+
+        StateNode(State state){
+            mState = state;
+        }
+
+        public State getState(){
+            return mState;
+        }
+
+        private State   mState;
     }
 
-    private class StateUnregistered implements StateNode{
+    /** concrete states */
+    private class StateUnregistered extends StateNode{
+
+        StateUnregistered(){
+            super(State.UNREGISTERED);
+        }
+
+        @Override
+        public State handleMessage(Message message) {
+            switch(message.what){
+                case MSG_TIME_EXPIRED:
+                    ++mRetryCount;
+                    Log.d(TAG, "registrion timer expired, tried " + mRetryCount);
+                    if((REGISTRATION_MAX_RETRY!=0) || (mRetryCount < REGISTRATION_MAX_RETRY)) {
+                        sendRegistration();
+                        mTimer.schedule(mTimerTask, REGISTRATION_RETRY_TIME);
+                    }
+                    break;
+                case MSG_RXED_PACKET:
+                    DatagramPacket packet = (DatagramPacket)message.obj;
+
+                    break;
+            }
+            return getState();
+        }
+
+        @Override
+        public void entry() {
+            sendRegistration();
+//            DatagramPacket packet = createRegistrationPacket();
+//            mUdpService.send(packet);
+
+            mTimerTask = new TimerTask(){
+                @Override
+                public void run() {
+                    Message msg = Message.obtain(PTTSignaling.this, MSG_TIME_EXPIRED);
+                    msg.sendToTarget();
+                }
+            };
+            mTimer.schedule(mTimerTask,REGISTRATION_RETRY_TIME);
+        }
+
+        @Override
+        public void exit() {
+            mTimerTask.cancel();
+            mTimerTask  = null;
+        }
+
+        private TimerTask   mTimerTask  = null;
+        private int         mRetryCount = 0;
+    }
+
+    private class StateRegistered extends StateNode {
+
+        StateRegistered(){
+            super(State.REGISTERED);
+        }
 
         @Override
         public State handleMessage(Message message) {
@@ -87,5 +204,90 @@ public class PTTSignaling extends Handler{
         }
     }
 
+    private class StateCallReceiving extends StateNode {
+
+        StateCallReceiving(){
+            super(State.CALL_RECEIVING);
+        }
+
+        @Override
+        public State handleMessage(Message message) {
+            return null;
+        }
+
+        @Override
+        public void entry() {
+
+        }
+
+        @Override
+        public void exit() {
+
+        }
+    }
+
+    private class StateCallHang extends StateNode {
+        StateCallHang(){
+            super(State.CALL_HANG);
+        }
+
+        @Override
+        public State handleMessage(Message message) {
+            return null;
+        }
+
+        @Override
+        public void entry() {
+
+        }
+
+        @Override
+        public void exit() {
+
+        }
+    }
+
+    private class StateCallInitiatiated extends StateNode {
+
+        StateCallInitiatiated(){
+            super(State.CALL_INITIATIATED);
+        }
+
+        @Override
+        public State handleMessage(Message message) {
+            return null;
+        }
+
+        @Override
+        public void entry() {
+
+        }
+
+        @Override
+        public void exit() {
+
+        }
+    }
+
+    private class StateCallTransmitting extends StateNode {
+        StateCallTransmitting(){
+            super(State.CALL_TRANSMITTING);
+        }
+
+        @Override
+        public State handleMessage(Message message) {
+            return null;
+        }
+
+        @Override
+        public void entry() {
+
+        }
+
+        @Override
+        public void exit() {
+
+        }
+    }
 
 }
