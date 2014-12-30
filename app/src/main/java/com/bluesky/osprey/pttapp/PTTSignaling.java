@@ -4,11 +4,13 @@ import java.util.EnumMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
+import com.bluesky.osprey.pttapp.protocol.Registration;
 
 
 /**
@@ -76,7 +78,7 @@ public class PTTSignaling extends Handler{
     private final static int MSG_RXED_PACKET = 1;
     private final static int MSG_TIME_EXPIRED = 2;
 
-    private final static int REGISTRATION_RETRY_TIME    = 100;  // 100 milliseconds
+    private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
     private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
 
@@ -111,7 +113,7 @@ public class PTTSignaling extends Handler{
         CALL_HANG,
         CALL_INITIATIATED,
         CALL_TRANSMITTING
-    };
+    }
 
     /** state abstraction */
     private abstract class StateNode{
@@ -143,8 +145,9 @@ public class PTTSignaling extends Handler{
                 case MSG_TIME_EXPIRED:
                     ++mRetryCount;
                     Log.d(TAG, "registrion timer expired, tried " + mRetryCount);
-                    if((REGISTRATION_MAX_RETRY!=0) || (mRetryCount < REGISTRATION_MAX_RETRY)) {
+                    if((REGISTRATION_MAX_RETRY==0) || (mRetryCount < REGISTRATION_MAX_RETRY)) {
                         sendRegistration();
+                        mTimerTask = creatTimerTask();
                         mTimer.schedule(mTimerTask, REGISTRATION_RETRY_TIME);
                     }
                     break;
@@ -159,16 +162,8 @@ public class PTTSignaling extends Handler{
         @Override
         public void entry() {
             sendRegistration();
-//            DatagramPacket packet = createRegistrationPacket();
-//            mUdpService.send(packet);
 
-            mTimerTask = new TimerTask(){
-                @Override
-                public void run() {
-                    Message msg = Message.obtain(PTTSignaling.this, MSG_TIME_EXPIRED);
-                    msg.sendToTarget();
-                }
-            };
+            mTimerTask = creatTimerTask();
             mTimer.schedule(mTimerTask,REGISTRATION_RETRY_TIME);
         }
 
@@ -176,6 +171,24 @@ public class PTTSignaling extends Handler{
         public void exit() {
             mTimerTask.cancel();
             mTimerTask  = null;
+        }
+
+        private void sendRegistration(){
+            Registration reg = new Registration();
+            reg.setSUID(0); //TODO: read from cnfig
+            ByteBuffer payload  = ByteBuffer.allocate(reg.getSize());
+            reg.serialize(payload);
+            mUdpService.send(payload);
+        }
+
+        private TimerTask creatTimerTask(){
+            return new TimerTask(){
+                @Override
+                public void run() {
+                    Message msg = Message.obtain(PTTSignaling.this, MSG_TIME_EXPIRED);
+                    msg.sendToTarget();
+                }
+            };
         }
 
         private TimerTask   mTimerTask  = null;

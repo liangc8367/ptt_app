@@ -3,6 +3,7 @@ package com.bluesky.osprey.pttapp;
 import android.util.Log;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -75,6 +76,11 @@ public class UDPService extends Thread{
             return true;
         }
         return false;
+    }
+
+    public boolean send(ByteBuffer payload){
+        DatagramPacket pkt  = new DatagramPacket(payload.array(), payload.capacity());
+        return send(pkt);
     }
 
 

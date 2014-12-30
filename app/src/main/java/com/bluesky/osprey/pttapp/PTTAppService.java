@@ -3,7 +3,6 @@ package com.bluesky.osprey.pttapp;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
-import android.os.Process;
 import android.os.HandlerThread;
 
 
@@ -12,6 +11,7 @@ import android.widget.Toast;
 import android.util.Log;
 
 import java.net.InetSocketAddress;
+
 
 /** PTT Application Service is the core of entire PTT application. It's responsible for
  * initialization of all background service threads, such as udp service and signaling.

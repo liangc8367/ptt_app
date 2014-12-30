@@ -11,10 +11,14 @@ public class Ack extends ProtocolBase {
 
     public static final int OFFSET_ACKTYPE      = 0;
 
+    public Ack(){
+    }
+
     public Ack(ByteBuffer payload){
         unserialize(payload);
     }
 
+    @Override
     public void unserialize(ByteBuffer payload){
         super.unserialize(payload);
         payload = super.getPayload();
@@ -23,18 +27,20 @@ public class Ack extends ProtocolBase {
         mOrigPacket = new ProtocolBase(payload.slice());
     }
 
+    @Override
     public void serialize(ByteBuffer payload){
         super.serialize(payload);
         payload.putShort(mAckType);
         mOrigPacket.serialize(payload);
     }
 
-    static public int getSize(){
-        return ProtocolBase.getSize() * 2 + 1 * Short.SIZE / Byte.SIZE;
+    @Override
+    public int getSize(){
+        return super.getSize() * 2 + Short.SIZE / Byte.SIZE;
     }
 
     static private int getMySize(){
-        return 1 * Short.SIZE / Byte.SIZE;
+        return Short.SIZE / Byte.SIZE;
     }
 
     public short getOrigSeq(){

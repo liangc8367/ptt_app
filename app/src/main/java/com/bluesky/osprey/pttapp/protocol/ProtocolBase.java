@@ -20,6 +20,10 @@ public class ProtocolBase {
 
     public static final int OFFSET_PTYPE       = 2;
 
+    public ProtocolBase(){
+
+    }
+
     /** ctor using received payload
      * @param payload
      */
@@ -46,6 +50,18 @@ public class ProtocolBase {
         payload.putShort(mType);
     }
 
+    /** get size of the proto
+     *
+     * @return
+     * TODO: in future, we can subclass ByteBuffer as Sizer class, then
+     * we call serializer() with a Sizer instance, and get the size from
+     * the Sizer afterwards.
+     *
+     */
+    public int getSize(){
+        return 2 * Short.SIZE / Byte.SIZE;
+    }
+
     static short peepType(ByteBuffer payload){
         return payload.getShort(OFFSET_PTYPE);
     }
@@ -67,9 +83,6 @@ public class ProtocolBase {
         return payload;
     }
 
-    static public int getSize(){
-        return 2 * Short.SIZE / Byte.SIZE;
-    }
 
     public void setSequence(short mSequence) {
         this.mSequence = mSequence;
