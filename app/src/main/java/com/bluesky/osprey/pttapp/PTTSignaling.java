@@ -10,7 +10,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-import com.bluesky.osprey.pttapp.protocol.Registration;
+import com.bluesky.protocol.*;
 
 
 /**

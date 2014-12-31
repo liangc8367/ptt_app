@@ -85,9 +85,13 @@ public class UDPService extends Thread{
 
 
     public void run(){
+        if(!bind()){
+            return; //TODO: to rethink this part
+        }
         if(!connect()){
             return;
         }
+
 
         while(mRunning){
             byte[]          rxedBuffer = new byte[MAX_UDP_PACKET_LENGTH];
@@ -132,11 +136,28 @@ public class UDPService extends Thread{
     }
 
 
+    /** private methods */
+    /** bind and bind udp socket per configuration
+     *
+     * @return true if success, else false
+     */
+    private boolean bind(){
+        try {
+            mSocket = new DatagramSocket(mConfig.addrLocal);
+        }catch ( Exception e ){
+            Log.e(TAG, "failed to bind:" + e);
+            mSocket = null;
+            return false;
+        }
+        mBound = true;
+        return true;
+    }
 
 
     /** private members */
     Configuration   mConfig = null;
     boolean         mRunning = false;
+    boolean         mBound   = false;
     DatagramSocket  mSocket = null;
     CompletionHandler   mRegisteredHandler = null;
 

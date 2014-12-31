@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.HandlerThread;
 
-
-
 import android.widget.Toast;
 import android.util.Log;
 
@@ -25,9 +23,11 @@ public class PTTAppService extends Service {
         // create udp service
         UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
         //TODO: read configuration from database
-        int port    = 32000;
-        udpSvcConfig.addrServer = new InetSocketAddress("192.168.0.105", port);
-        udpSvcConfig.addrLocal = new InetSocketAddress(port+1);
+
+        udpSvcConfig.addrServer = new InetSocketAddress(
+                                    GlobalConstants.TRUNK_CENTER_ADDR,
+                                    GlobalConstants.TRUNK_CENTER_PORT);
+        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
         mUdpService = new UDPService(udpSvcConfig);
 
         // create signaling processor
