@@ -35,10 +35,9 @@ public class PTTAppService extends Service {
                                 android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
         mSignalingThread.start();
         mSignaling = new PTTSignaling(mSignalingThread.getLooper(), mUdpService);
+        mSignaling.start();
 
-
-        mUdpService.startService();
-    }
+     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {

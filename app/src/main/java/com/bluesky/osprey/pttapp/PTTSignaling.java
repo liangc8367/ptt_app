@@ -30,14 +30,20 @@ public class PTTSignaling extends Handler{
     /** public methods */
     public PTTSignaling(Looper svcLooper, UDPService udpService){
         super(svcLooper);
+        mSeqNumber  = GlobalConstants.INIT_SEQ_NUMBER;
         mUdpService = udpService;
         mUdpService.setCompletionHandler(mUdpRxHandler);
 
         mTimer  = new Timer("SignalingTimer");
 
-        initializeStateMachine();
+        mState = State.NOT_STARTED;
     }
 
+    /** kick off Signaling */
+    public void start(){
+        Message msg = Message.obtain(this, MSG_START);
+        msg.sendToTarget();
+    }
 
     /** private methods */
     private void initializeStateMachine(){
@@ -63,6 +69,14 @@ public class PTTSignaling extends Handler{
 
     @Override
     public void handleMessage(Message message){
+        if( mState == State.NOT_STARTED &&
+                message.what == MSG_START)
+        {
+            mUdpService.startService();
+            initializeStateMachine();
+            return;
+        }
+
         State oldState = mState;
         State newState = mStateNode.handleMessage(message);
         if( oldState != newState ){
@@ -75,15 +89,16 @@ public class PTTSignaling extends Handler{
 
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
-    private final static int MSG_RXED_PACKET = 1;
-    private final static int MSG_TIME_EXPIRED = 2;
+    private final static int MSG_START          = 0;
+    private final static int MSG_RXED_PACKET    = 1;
+    private final static int MSG_TIME_EXPIRED   = 2;
 
     private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
     private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
 
 
-    State       mState  = State.UNREGISTERED;
+    State       mState  = State.NOT_STARTED;
     StateNode   mStateNode = null;
     EnumMap<State, StateNode>   mStateMap;
 
@@ -91,6 +106,7 @@ public class PTTSignaling extends Handler{
     UdpRxHandler    mUdpRxHandler   = null;
 
     Timer       mTimer;
+    short       mSeqNumber;
 
     private class UdpRxHandler implements UDPService.CompletionHandler{
         @Override
@@ -107,6 +123,7 @@ public class PTTSignaling extends Handler{
      *         Compiler).
      */
     private enum State {
+        NOT_STARTED,
         UNREGISTERED,
         REGISTERED,
         CALL_RECEIVING,
@@ -175,7 +192,8 @@ public class PTTSignaling extends Handler{
 
         private void sendRegistration(){
             Registration reg = new Registration();
-            reg.setSUID(0); //TODO: read from cnfig
+            reg.setSequence(++mSeqNumber);
+            reg.setSUID(GlobalConstants.SUB_ID); //TODO: read from cnfig
             ByteBuffer payload  = ByteBuffer.allocate(reg.getSize());
             reg.serialize(payload);
             mUdpService.send(payload);
