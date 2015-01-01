@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import java.net.InetSocketAddress;
+
 
 public class MainActivity extends ActionBarActivity {
 
@@ -40,8 +42,22 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void onStartPTTService(View view) {
-        Intent intent = new Intent(this, PTTAppService.class);
-        startService(intent);
+//        Intent intent = new Intent(this, PTTAppService.class);
+//        startService(intent);
+
+        // create udp service
+        UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
+        //TODO: read configuration from database
+
+        udpSvcConfig.addrServer = new InetSocketAddress(
+                GlobalConstants.TRUNK_CENTER_ADDR,
+                GlobalConstants.TRUNK_CENTER_PORT);
+        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
+        mUdpService = new UDPService(udpSvcConfig);
+        mUdpService.startService();
     }
 
-    }
+    UDPService  mUdpService;
+
+
+}

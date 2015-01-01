@@ -92,6 +92,8 @@ public class UDPService extends Thread{
 
 
     public void run(){
+        Log.e(TAG, "local address=" + mSocket.getLocalAddress() + ":" + mSocket.getLocalPort());
+        Log.e(TAG, "remote address =" + mSocket.getInetAddress() + ":" + mSocket.getPort());
         while(mRunning){
             byte[]          rxedBuffer = new byte[MAX_UDP_PACKET_LENGTH];
             DatagramPacket  rxedPacket = new DatagramPacket(rxedBuffer, MAX_UDP_PACKET_LENGTH);
