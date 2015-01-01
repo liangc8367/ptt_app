@@ -96,9 +96,9 @@ public class UDPService extends Thread{
         if(!bind()){
             return ;
         }
-        if(!connect()){
-            return ;
-        }
+//        if(!connect()){
+//            return ;
+//        }
 
         Log.e(TAG, "local address=" + mSocket.getLocalAddress() + ":" + mSocket.getLocalPort());
         Log.e(TAG, "remote address =" + mSocket.getInetAddress() + ":" + mSocket.getPort());
