@@ -50,17 +50,18 @@ public class UDPService extends Thread{
     }
 
     public boolean startService(){
-        if(!bind()){
-            return false; //TODO: to rethink this part
-        }
-        if(!connect()){
-            return false;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
-        }
-
+//        if(!bind()){
+//            return false; //TODO: to rethink this part
+//        }
+//        if(!connect()){
+//            return false;
+//        }
+        mRunning = true;
         try{
             start();
         } catch (IllegalThreadStateException e){
             Log.e(TAG, "UDP Service has already started");
+            mRunning = false;
             return false;
         }
         return true;
@@ -92,6 +93,13 @@ public class UDPService extends Thread{
 
 
     public void run(){
+        if(!bind()){
+            return ;
+        }
+        if(!connect()){
+            return ;
+        }
+
         Log.e(TAG, "local address=" + mSocket.getLocalAddress() + ":" + mSocket.getLocalPort());
         Log.e(TAG, "remote address =" + mSocket.getInetAddress() + ":" + mSocket.getPort());
         while(mRunning){
