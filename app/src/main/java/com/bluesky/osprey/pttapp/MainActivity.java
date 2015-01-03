@@ -55,6 +55,10 @@ public class MainActivity extends ActionBarActivity {
         udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
         mUdpService = new UDPService(udpSvcConfig);
         mUdpService.startService();
+
+        // start Call Activity
+        Intent intent = new Intent(this, CallActivity.class);
+        startActivity(intent);
     }
 
     UDPService  mUdpService;

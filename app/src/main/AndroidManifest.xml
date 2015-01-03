@@ -29,6 +29,11 @@
             android:name=".PTTAppService"
             android:enabled="true"
             android:exported="false" />
+
+        <activity
+            android:name=".CallActivity"
+            android:label="@string/title_activity_call" >
+        </activity>
     </application>
 
 </manifest>

@@ -170,7 +170,7 @@ public class PTTSignaling extends Handler{
                     break;
                 case MSG_RXED_PACKET:
                     DatagramPacket packet = (DatagramPacket)message.obj;
-
+                    handleRxedPacket(packet);
                     break;
             }
             return getState();
@@ -207,6 +207,18 @@ public class PTTSignaling extends Handler{
                     msg.sendToTarget();
                 }
             };
+        }
+
+        private void handleRxedPacket(DatagramPacket packet){
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            if( protoType == ProtocolBase.PTYPE_ACK){
+                Ack proto = (Ack)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+                if(proto.getAckType() == Ack.ACKTYPE_POSITIVE){
+                    //TODO: validate ack...
+                    mState = State.REGISTERED;
+                    Log.i(TAG, "registered");
+                }
+            }
         }
 
         private TimerTask   mTimerTask  = null;
