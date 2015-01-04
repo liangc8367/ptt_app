@@ -55,6 +55,8 @@ public class PTTAppService extends Service {
         mUdpService.stopService();
         mSignalingThread.quit();
 
+        //TODO: to clean up timer thread, and udp thread
+
         super.onDestroy();
     }
 
