@@ -158,23 +158,23 @@ public class PTTSignaling extends Handler{
         abstract void  entry();
         abstract void  exit();
 
-        StateNode(State state){
-            mState = state;
-        }
-
-        public State getState(){
-            return mState;
-        }
-
-        private State   mState;
+//        StateNode(State state){
+//            mState = state;
+//        }
+//
+//        public State getState(){
+//            return mState;
+//        }
+//
+//        private State   mState;
     }
 
     /** concrete states */
     private class StateUnregistered extends StateNode{
 
-        StateUnregistered(){
-            super(State.UNREGISTERED);
-        }
+//        StateUnregistered(){
+//            super(State.UNREGISTERED);
+//        }
 
         @Override
         public State handleMessage(Message message) {
@@ -247,9 +247,9 @@ public class PTTSignaling extends Handler{
 
     private class StateRegistered extends StateNode {
 
-        StateRegistered(){
-            super(State.REGISTERED);
-        }
+//        StateRegistered(){
+//            super(State.REGISTERED);
+//        }
 
         @Override
         public State handleMessage(Message message) {
@@ -269,9 +269,9 @@ public class PTTSignaling extends Handler{
 
     private class StateCallReceiving extends StateNode {
 
-        StateCallReceiving(){
-            super(State.CALL_RECEIVING);
-        }
+//        StateCallReceiving(){
+//            super(State.CALL_RECEIVING);
+//        }
 
         @Override
         public State handleMessage(Message message) {
@@ -290,9 +290,9 @@ public class PTTSignaling extends Handler{
     }
 
     private class StateCallHang extends StateNode {
-        StateCallHang(){
-            super(State.CALL_HANG);
-        }
+//        StateCallHang(){
+//            super(State.CALL_HANG);
+//        }
 
         @Override
         public State handleMessage(Message message) {
@@ -312,9 +312,9 @@ public class PTTSignaling extends Handler{
 
     private class StateCallInitiatiated extends StateNode {
 
-        StateCallInitiatiated(){
-            super(State.CALL_INITIATIATED);
-        }
+//        StateCallInitiatiated(){
+//            super(State.CALL_INITIATIATED);
+//        }
 
         @Override
         public State handleMessage(Message message) {
@@ -333,9 +333,9 @@ public class PTTSignaling extends Handler{
     }
 
     private class StateCallTransmitting extends StateNode {
-        StateCallTransmitting(){
-            super(State.CALL_TRANSMITTING);
-        }
+//        StateCallTransmitting(){
+//            super(State.CALL_TRANSMITTING);
+//        }
 
         @Override
         public State handleMessage(Message message) {
