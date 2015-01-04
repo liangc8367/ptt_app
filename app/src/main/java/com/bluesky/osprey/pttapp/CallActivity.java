@@ -4,7 +4,10 @@ import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View.OnTouchListener;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,6 +18,10 @@ public class CallActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_call);
+
+        // setup button callback to handle press/release
+        Button btnCall = (Button)findViewById(R.id.btnCall);
+        btnCall.setOnTouchListener(new CallButtonListener(this));
 
     }
 
@@ -62,5 +69,25 @@ public class CallActivity extends ActionBarActivity {
      */
     public void onMakeCall(View view){
         Toast.makeText(this, "PTT Pressed...", Toast.LENGTH_SHORT).show();
+    }
+
+    /** private inner classes and members */
+    private class CallButtonListener implements OnTouchListener {
+        /** ctor */
+        public CallButtonListener(CallActivity parent){
+            mCallActivity = parent;
+        }
+        @Override
+        public boolean onTouch(View v, MotionEvent event){
+            if(event.getAction() == MotionEvent.ACTION_DOWN ) {
+                Toast.makeText(mCallActivity, "PTT Pressed...", Toast.LENGTH_SHORT).show();
+            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                Toast.makeText(mCallActivity, "PTT Released...", Toast.LENGTH_SHORT).show();
+            }
+            // pretend we didn't consume the event, so the button has it
+            // default behaviour unchanged.
+            return false;
+        }
+        private CallActivity mCallActivity = null;
     }
 }

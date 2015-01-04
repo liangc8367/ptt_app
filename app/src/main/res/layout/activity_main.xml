@@ -55,8 +55,7 @@
                 android:text="@string/stop_service"
                 android:id="@+id/btnStopService"
                 android:layout_gravity="top|left|center_horizontal"
-                android:layout_weight="1"
-                android:onClick="onStopService" />
+                android:layout_weight="1" />
 
         </TableRow>
 

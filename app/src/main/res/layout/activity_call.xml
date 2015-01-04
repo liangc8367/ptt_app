@@ -91,10 +91,8 @@
             <Button
                 android:layout_width="fill_parent"
                 android:layout_height="fill_parent"
-                android:text="New Button"
                 android:id="@+id/btnCall"
-                android:layout_weight="4"
-                android:onClick="onMakeCall" />
+                android:layout_weight="4" />
         </TableRow>
 
         <TableRow
