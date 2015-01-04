@@ -33,6 +33,7 @@ public class PTTSignaling extends Handler{
      */
     public enum State {
         NOT_STARTED,
+        STOPPED,
         UNREGISTERED,
         REGISTERED,
         CALL_RECEIVING,
@@ -68,6 +69,12 @@ public class PTTSignaling extends Handler{
         msg.sendToTarget();
     }
 
+    /** graceful shutdown signaling */
+    public void stop(){
+        Message msg = Message.obtain(this, MSG_STOP);
+        msg.sendToTarget();
+    }
+
      /** try to make a call per current configuration
      *
      * @param pressed non-zero, pressed
@@ -80,6 +87,15 @@ public class PTTSignaling extends Handler{
 
     @Override
     public void handleMessage(Message message){
+        if( mState == State.STOPPED ){
+            return;
+        }
+
+        if( message.what == MSG_STOP ){
+            cleanup();
+            return;
+        }
+
         if( mState == State.NOT_STARTED &&
                 message.what == MSG_START)
         {
@@ -120,12 +136,29 @@ public class PTTSignaling extends Handler{
         mStateNode.entry();
     }
 
+    /** house clean */
+    private void cleanup(){
+        getLooper().quit();
+
+        mUdpService.stopService();
+        mUdpService = null;
+        mUdpRxHandler = null;
+
+        mTimer.cancel();
+        mTimer  = null;
+
+        mStateNode.exit();
+        mStateNode = null;
+        mState = State.STOPPED;
+    }
+
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
     private final static int MSG_START          = 0;
     private final static int MSG_RXED_PACKET    = 1;
     private final static int MSG_TIME_EXPIRED   = 2;
     private final static int MSG_MAKE_CALL      = 3;
+    private final static int MSG_STOP           = 99;
 
     private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit

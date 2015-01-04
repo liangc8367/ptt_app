@@ -69,7 +69,7 @@ public class UDPService extends Thread{
 
     public boolean stopService(){
         mRunning = false;
-        //TODO: send interrupt
+        mSocket.close(); // simply close the socket to let blocking rcv return
         return true;
     }
 

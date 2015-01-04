@@ -52,12 +52,16 @@ public class PTTAppService extends Service {
     public void onDestroy() {
         Toast.makeText(this, "Signaling service stopping...", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Signaling service destory ...");
-        mUdpService.stopService();
-        mSignalingThread.quit();
 
         //TODO: to clean up timer thread, and udp thread
         // better to send a message to Signaling service before quit its looper thread
         // , and then query its state and set null to its reference.
+        mSignaling.stop();
+
+        mSignaling = null;
+        mSignalingThread = null;
+        mUdpService = null;
+
         super.onDestroy();
     }
 
