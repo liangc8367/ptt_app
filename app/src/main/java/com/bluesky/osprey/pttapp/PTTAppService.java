@@ -41,14 +41,19 @@ public class PTTAppService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "Signaling service starting", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Signaling service starting...", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Signaling service starting...");
-        return super.onStartCommand(intent, flags, startId);
+        // we want the service to continue running until it is explicitly stopped.
+        return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
+        Toast.makeText(this, "Signaling service stopping...", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Signaling service destory ...");
+        mUdpService.stopService();
+        mSignalingThread.quit();
+
         super.onDestroy();
     }
 

@@ -7,15 +7,64 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/btnStartRecording"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="62dp"
-        android:text="@string/start_service"
-        android:onClick="onStartPTTService" />
+    <TableLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:weightSum="4">
 
-    <TextView android:text="@string/hello_world" android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1">
+
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="@string/hello_world"
+                android:id="@+id/textView"
+                android:layout_gravity="top|bottom|center"
+                android:layout_weight="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1"
+            android:layout_gravity="center_horizontal">
+
+            <Button
+                android:id="@+id/btnStartService"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:text="@string/start_service"
+                android:onClick="onStartPTTService"
+                android:layout_gravity="top|left|center_horizontal"
+                android:layout_weight="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1"
+            android:layout_gravity="center_horizontal">
+
+            <Button
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:text="@string/stop_service"
+                android:id="@+id/btnStopService"
+                android:layout_gravity="top|left|center_horizontal"
+                android:layout_weight="1"
+                android:onClick="onStopService" />
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1"></TableRow>
+
+    </TableLayout>
 
 </RelativeLayout>
