@@ -48,6 +48,8 @@ public class PTTSignaling extends Handler{
         super(svcLooper);
         mSeqNumber  = GlobalConstants.INIT_SEQ_NUMBER;
         mUdpService = udpService;
+
+        mUdpRxHandler = new UdpRxHandler();
         mUdpService.setCompletionHandler(mUdpRxHandler);
 
         mTimer  = new Timer("SignalingTimer");
