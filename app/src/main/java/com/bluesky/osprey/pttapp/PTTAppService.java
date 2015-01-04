@@ -56,7 +56,8 @@ public class PTTAppService extends Service {
         mSignalingThread.quit();
 
         //TODO: to clean up timer thread, and udp thread
-
+        // better to send a message to Signaling service before quit its looper thread
+        // , and then query its state and set null to its reference.
         super.onDestroy();
     }
 

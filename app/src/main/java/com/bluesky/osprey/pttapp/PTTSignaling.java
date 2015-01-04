@@ -68,7 +68,7 @@ public class PTTSignaling extends Handler{
         msg.sendToTarget();
     }
 
-    /** try to make a call per current configuration
+     /** try to make a call per current configuration
      *
      * @param pressed non-zero, pressed
      */
