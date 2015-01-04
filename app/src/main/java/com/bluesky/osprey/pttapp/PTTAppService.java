@@ -2,6 +2,7 @@ package com.bluesky.osprey.pttapp;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.os.HandlerThread;
 
@@ -57,15 +58,24 @@ public class PTTAppService extends Service {
         super.onDestroy();
     }
 
+    public class SignalingBinder extends Binder {
+        public PTTSignaling getSignaling(){
+            return mSignaling;
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+//        throw new UnsupportedOperationException("Not yet implemented");
+        return mBinder;
     }
 
     /** private members */
     HandlerThread   mSignalingThread = null;
     UDPService  mUdpService = null;
     PTTSignaling    mSignaling = null;
-    private final static String TAG=GlobalConstants.TAG + ":App";
+
+    final IBinder   mBinder = new SignalingBinder();
+
+    final static String TAG=GlobalConstants.TAG + ":App";
 }

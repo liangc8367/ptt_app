@@ -26,6 +26,22 @@ import com.bluesky.protocol.*;
  * Created by liangc on 28/12/14.
  */
 public class PTTSignaling extends Handler{
+    /** state machine for PTT Signaling
+     *  @TODO: Right now, I just quickly implemented the state machine directly in java language.
+     *         If I have enough time, I would replace the implementation using SMC(State Machine
+     *         Compiler).
+     */
+    public enum State {
+        NOT_STARTED,
+        UNREGISTERED,
+        REGISTERED,
+        CALL_RECEIVING,
+        CALL_HANG,
+        CALL_INITIATIATED,
+        CALL_TRANSMITTING
+
+    }
+
 
     /** public methods */
     public PTTSignaling(Looper svcLooper, UDPService udpService){
@@ -39,10 +55,45 @@ public class PTTSignaling extends Handler{
         mState = State.NOT_STARTED;
     }
 
+    /** get current state */
+    public State getState(){
+        return mState;
+    }
+
     /** kick off Signaling */
     public void start(){
         Message msg = Message.obtain(this, MSG_START);
         msg.sendToTarget();
+    }
+
+    /** try to make a call per current configuration
+     *
+     * @param pressed non-zero, pressed
+     */
+    public void pttKey(int pressed){
+        Message msg = Message.obtain(this, MSG_MAKE_CALL, pressed, 0);
+        msg.sendToTarget();
+    }
+
+
+    @Override
+    public void handleMessage(Message message){
+        if( mState == State.NOT_STARTED &&
+                message.what == MSG_START)
+        {
+            mUdpService.startService();
+            initializeStateMachine();
+            return;
+        }
+
+        State oldState = mState;
+        State newState = mStateNode.handleMessage(message);
+        if( oldState != newState ){
+            mStateNode.exit();
+            mState = newState;
+            mStateNode = mStateMap.get(mState);
+            mStateNode.entry();
+        }
     }
 
     /** private methods */
@@ -67,31 +118,12 @@ public class PTTSignaling extends Handler{
         mStateNode.entry();
     }
 
-    @Override
-    public void handleMessage(Message message){
-        if( mState == State.NOT_STARTED &&
-                message.what == MSG_START)
-        {
-            mUdpService.startService();
-            initializeStateMachine();
-            return;
-        }
-
-        State oldState = mState;
-        State newState = mStateNode.handleMessage(message);
-        if( oldState != newState ){
-            mStateNode.exit();
-            mState = newState;
-            mStateNode = mStateMap.get(mState);
-            mStateNode.entry();
-        }
-    }
-
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
     private final static int MSG_START          = 0;
     private final static int MSG_RXED_PACKET    = 1;
     private final static int MSG_TIME_EXPIRED   = 2;
+    private final static int MSG_MAKE_CALL      = 3;
 
     private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
@@ -117,20 +149,6 @@ public class PTTSignaling extends Handler{
     }
 
 
-    /** state machine for PTT Signaling
-     *  @TODO: Right now, I just quickly implemented the state machine directly in java language.
-     *         If I have enough time, I would replace the implementation using SMC(State Machine
-     *         Compiler).
-     */
-    private enum State {
-        NOT_STARTED,
-        UNREGISTERED,
-        REGISTERED,
-        CALL_RECEIVING,
-        CALL_HANG,
-        CALL_INITIATIATED,
-        CALL_TRANSMITTING
-    }
 
     /** state abstraction */
     private abstract class StateNode{
