@@ -85,6 +85,10 @@ public class PTTSignaling extends Handler{
     }
 
 
+    /** handling all messages, may change state afterwards.
+     *
+     * @param message
+     */
     @Override
     public void handleMessage(Message message){
         if( mState == State.STOPPED ){
@@ -152,6 +156,21 @@ public class PTTSignaling extends Handler{
         mState = State.STOPPED;
     }
 
+    /** send registration */
+    private void sendRegistration(){
+        Registration reg = new Registration();
+        reg.setSequence(++mSeqNumber);
+        reg.setSUID(GlobalConstants.SUB_ID); //TODO: read from cnfig
+        ByteBuffer payload  = ByteBuffer.allocate(reg.getSize());
+        reg.serialize(payload);
+        mUdpService.send(payload);
+    }
+
+    /** start calling procedure */
+    private void startCalling(){
+
+    }
+
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
     private final static int MSG_START          = 0;
@@ -163,6 +182,8 @@ public class PTTSignaling extends Handler{
     private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
     private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
+
+    private final static int CALL_PACKET_INTERVAL       = 20; // 20ms
 
 
     State       mState  = State.NOT_STARTED;
@@ -230,15 +251,6 @@ public class PTTSignaling extends Handler{
             mTimerTask  = null;
         }
 
-        private void sendRegistration(){
-            Registration reg = new Registration();
-            reg.setSequence(++mSeqNumber);
-            reg.setSUID(GlobalConstants.SUB_ID); //TODO: read from cnfig
-            ByteBuffer payload  = ByteBuffer.allocate(reg.getSize());
-            reg.serialize(payload);
-            mUdpService.send(payload);
-        }
-
         private TimerTask creatTimerTask(){
             return new TimerTask(){
                 @Override
@@ -256,7 +268,7 @@ public class PTTSignaling extends Handler{
                 if(proto.getAckType() == Ack.ACKTYPE_POSITIVE){
                     //TODO: validate ack...
                     mState = State.REGISTERED;
-                    Log.i(TAG, "registered");
+                    Log.i(TAG, "rxed registeration ack");
                 }
             }
         }
@@ -265,16 +277,28 @@ public class PTTSignaling extends Handler{
         private int         mRetryCount = 0;
     }
 
+    /** registered state,
+     *  ptt ==> call initiated
+     *  callinit ==> call receiving
+     *  call term ==> call hang
+     */
     private class StateRegistered extends StateNode {
 
         @Override
         public State handleMessage(Message message) {
-            return null;
+            switch(message.what){
+                case MSG_MAKE_CALL:
+                    mState = State.CALL_INITIATIATED;
+                    break;
+                default:
+                    break;
+            }
+            return getState();
         }
 
         @Override
         public void entry() {
-
+            Log.i(TAG, "Registered");
         }
 
         @Override
@@ -287,12 +311,12 @@ public class PTTSignaling extends Handler{
 
         @Override
         public State handleMessage(Message message) {
-            return null;
+            return getState();
         }
 
         @Override
         public void entry() {
-
+            Log.i(TAG, "Call receiving");
         }
 
         @Override
@@ -305,12 +329,12 @@ public class PTTSignaling extends Handler{
 
         @Override
         public State handleMessage(Message message) {
-            return null;
+            return getState();
         }
 
         @Override
         public void entry() {
-
+            Log.i(TAG, "Call hang");
         }
 
         @Override
@@ -323,11 +347,16 @@ public class PTTSignaling extends Handler{
 
         @Override
         public State handleMessage(Message message) {
-            return null;
+            return getState();
         }
 
         @Override
         public void entry() {
+            Log.i(TAG, "Call initiatiated");
+
+            // send first callInit packet
+            startCalling();
+
 
         }
 
@@ -335,18 +364,23 @@ public class PTTSignaling extends Handler{
         public void exit() {
 
         }
+
+        /** private methods & members */
+        TimerTask   mTimerTask;
+        int         mCallInitCount;
+        short       mCallInitSeq;
     }
 
     private class StateCallTransmitting extends StateNode {
 
         @Override
         public State handleMessage(Message message) {
-            return null;
+            return getState();
         }
 
         @Override
         public void entry() {
-
+            Log.i(TAG, "Call terminating");
         }
 
         @Override
