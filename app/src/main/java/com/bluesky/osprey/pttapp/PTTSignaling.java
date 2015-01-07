@@ -38,7 +38,7 @@ public class PTTSignaling extends Handler{
         REGISTERED,
         CALL_RECEIVING,
         CALL_HANG,
-        CALL_INITIATIATED,
+        CALL_INITIATIATING,
         CALL_TRANSMITTING
 
     }
@@ -130,8 +130,8 @@ public class PTTSignaling extends Handler{
         mStateMap.put(State.CALL_RECEIVING, aState);
         aState = new StateCallHang();
         mStateMap.put(State.CALL_HANG, aState);
-        aState = new StateCallInitiatiated();
-        mStateMap.put(State.CALL_INITIATIATED, aState);
+        aState = new StateCallInitiatiating();
+        mStateMap.put(State.CALL_INITIATIATING, aState);
         aState = new StateCallTransmitting();
         mStateMap.put(State.CALL_TRANSMITTING, aState);
 
@@ -167,8 +167,23 @@ public class PTTSignaling extends Handler{
     }
 
     /** start calling procedure */
-    private void startCalling(){
+    private void sendPreamble(){
+        CallInit preamble = new CallInit(GlobalConstants.TGT_ID, GlobalConstants.SUB_ID);
+        preamble.setSequence(++mSeqNumber);
+        ByteBuffer payload = ByteBuffer.allocate(preamble.getSize());
+        preamble.serialize(payload)
+        mUdpService.send(payload);
+    }
 
+    /** create timer task */
+    private TimerTask creatTimerTask(){
+        return new TimerTask(){
+            @Override
+            public void run() {
+                Message msg = Message.obtain(PTTSignaling.this, MSG_TIME_EXPIRED);
+                msg.sendToTarget();
+            }
+        };
     }
 
     /** private members */
@@ -183,7 +198,8 @@ public class PTTSignaling extends Handler{
     private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
     private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
 
-    private final static int CALL_PACKET_INTERVAL       = 20; // 20ms
+    private final static int CALL_PACKET_INTERVAL       = 20; // 20ms TODO: consider 40ms
+    private final static int CALL_PREAMBLE_NUMBER      = 3;  // 3 preambles (3 * 20);
 
 
     State       mState  = State.NOT_STARTED;
@@ -251,15 +267,6 @@ public class PTTSignaling extends Handler{
             mTimerTask  = null;
         }
 
-        private TimerTask creatTimerTask(){
-            return new TimerTask(){
-                @Override
-                public void run() {
-                    Message msg = Message.obtain(PTTSignaling.this, MSG_TIME_EXPIRED);
-                    msg.sendToTarget();
-                }
-            };
-        }
 
         private void handleRxedPacket(DatagramPacket packet){
             short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
@@ -288,7 +295,7 @@ public class PTTSignaling extends Handler{
         public State handleMessage(Message message) {
             switch(message.what){
                 case MSG_MAKE_CALL:
-                    mState = State.CALL_INITIATIATED;
+                    mState = State.CALL_INITIATIATING;
                     break;
                 default:
                     break;
@@ -343,34 +350,66 @@ public class PTTSignaling extends Handler{
         }
     }
 
-    private class StateCallInitiatiated extends StateNode {
+    /** call initiatiating state, to send out 3 preambles, and jump to call transmitting
+     *  if no negative ack, or call term, or others call is received from Trunk manager.
+     */
+    private class StateCallInitiatiating extends StateNode {
 
         @Override
         public State handleMessage(Message message) {
+            switch(message.what) {
+                case MSG_TIME_EXPIRED:
+                    ++mCallPreambleCount;
+                    Log.d(TAG, "Call initiatiating, preamble = " + mCallPreambleCount);
+                    if(mCallPreambleCount < CALL_PREAMBLE_NUMBER){
+                        sendPreamble();
+                        mTimerTask = creatTimerTask();
+                        mTimer.schedule(mTimerTask, CALL_PACKET_INTERVAL);
+                    } else {
+                        mState = State.CALL_TRANSMITTING;
+                    }
+                    break;
+                case MSG_RXED_PACKET:
+                    DatagramPacket packet = (DatagramPacket) message.obj;
+                    // TODO: handleRxedPacket(packet);
+                    break;
+            }
             return getState();
         }
 
         @Override
         public void entry() {
-            Log.i(TAG, "Call initiatiated");
+            ++mCallPreambleCount;
+            Log.d(TAG, "Call initiatiating, preamble = " + mCallPreambleCount);
 
             // send first callInit packet
-            startCalling();
+            sendPreamble();
 
+            // start timer
+            mTimerTask = creatTimerTask();
+            mTimer.schedule(mTimerTask, CALL_PACKET_INTERVAL);
 
         }
 
         @Override
         public void exit() {
+            // cancel timer
+            mTimerTask.cancel();
+            mTimerTask  = null;
+
+            // reset preamble count(?)
 
         }
 
         /** private methods & members */
         TimerTask   mTimerTask;
-        int         mCallInitCount;
+        int         mCallPreambleCount = 0;
         short       mCallInitSeq;
     }
 
+    /** call transmitting state, keep transmitting until user dekeys, or receives any signaling
+     *  from trunk manager, indicating to stop transmitting.
+     */
     private class StateCallTransmitting extends StateNode {
 
         @Override
@@ -381,11 +420,17 @@ public class PTTSignaling extends Handler{
         @Override
         public void entry() {
             Log.i(TAG, "Call terminating");
+
+            // create encoder
+            // enable microphone lineup
+            // start timer (?)
         }
 
         @Override
         public void exit() {
-
+            // disable microphone lineup
+            // destory encoder
+            // stop timer (?)
         }
     }
 
