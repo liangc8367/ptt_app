@@ -171,7 +171,7 @@ public class PTTSignaling extends Handler{
         CallInit preamble = new CallInit(GlobalConstants.TGT_ID, GlobalConstants.SUB_ID);
         preamble.setSequence(++mSeqNumber);
         ByteBuffer payload = ByteBuffer.allocate(preamble.getSize());
-        preamble.serialize(payload)
+        preamble.serialize(payload);
         mUdpService.send(payload);
     }
 
@@ -194,12 +194,6 @@ public class PTTSignaling extends Handler{
     private final static int MSG_MAKE_CALL      = 3;
     private final static int MSG_STOP           = 99;
 
-    private final static int REGISTRATION_RETRY_TIME    = 10 * 1000;  // 10s
-    private final static int REGISTRATION_MAX_RETRY     = 0;    // infinit
-    private final static int KEEPALIVE_PERIOD           = 10 * 1000;    // 10s TODO: STUN parameter?
-
-    private final static int CALL_PACKET_INTERVAL       = 20; // 20ms TODO: consider 40ms
-    private final static int CALL_PREAMBLE_NUMBER      = 3;  // 3 preambles (3 * 20);
 
 
     State       mState  = State.NOT_STARTED;
@@ -239,10 +233,11 @@ public class PTTSignaling extends Handler{
                 case MSG_TIME_EXPIRED:
                     ++mRetryCount;
                     Log.d(TAG, "registrion timer expired, tried " + mRetryCount);
-                    if((REGISTRATION_MAX_RETRY==0) || (mRetryCount < REGISTRATION_MAX_RETRY)) {
+                    if((GlobalConstants.REGISTRATION_MAX_RETRY==0) ||
+                            (mRetryCount < GlobalConstants.REGISTRATION_MAX_RETRY)) {
                         sendRegistration();
                         mTimerTask = creatTimerTask();
-                        mTimer.schedule(mTimerTask, REGISTRATION_RETRY_TIME);
+                        mTimer.schedule(mTimerTask, GlobalConstants.REGISTRATION_RETRY_TIME);
                     }
                     break;
                 case MSG_RXED_PACKET:
@@ -258,7 +253,7 @@ public class PTTSignaling extends Handler{
             sendRegistration();
 
             mTimerTask = creatTimerTask();
-            mTimer.schedule(mTimerTask,REGISTRATION_RETRY_TIME);
+            mTimer.schedule(mTimerTask,GlobalConstants.REGISTRATION_RETRY_TIME);
         }
 
         @Override
@@ -361,10 +356,10 @@ public class PTTSignaling extends Handler{
                 case MSG_TIME_EXPIRED:
                     ++mCallPreambleCount;
                     Log.d(TAG, "Call initiatiating, preamble = " + mCallPreambleCount);
-                    if(mCallPreambleCount < CALL_PREAMBLE_NUMBER){
+                    if(mCallPreambleCount < GlobalConstants.CALL_PREAMBLE_NUMBER){
                         sendPreamble();
                         mTimerTask = creatTimerTask();
-                        mTimer.schedule(mTimerTask, CALL_PACKET_INTERVAL);
+                        mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL);
                     } else {
                         mState = State.CALL_TRANSMITTING;
                     }
@@ -387,7 +382,7 @@ public class PTTSignaling extends Handler{
 
             // start timer
             mTimerTask = creatTimerTask();
-            mTimer.schedule(mTimerTask, CALL_PACKET_INTERVAL);
+            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL);
 
         }
 
