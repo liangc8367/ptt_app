@@ -414,9 +414,11 @@ public class PTTSignaling extends Handler{
 
         @Override
         public void entry() {
-            Log.i(TAG, "Call terminating");
+            Log.i(TAG, "Call transmitting...");
 
             // create encoder
+            mAudioTxPath    = new AudioTxPath();
+            mAudioTxPath.start();
             // enable microphone lineup
             // start timer (?)
         }
@@ -424,9 +426,12 @@ public class PTTSignaling extends Handler{
         @Override
         public void exit() {
             // disable microphone lineup
+            mAudioTxPath.stop();
             // destory encoder
             // stop timer (?)
         }
+
+        AudioTxPath     mAudioTxPath;
     }
 
 }
