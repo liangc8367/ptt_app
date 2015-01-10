@@ -111,14 +111,14 @@ public class CallActivity extends ActionBarActivity {
 //                Toast.makeText(mCallActivity, "PTT Pressed...", Toast.LENGTH_SHORT).show();
                 Log.i(TAG, "PTT pressed");
                 if( mBound ){
-                    mSignaling.pttKey(1);
+                    mSignaling.pttKey(PTTSignaling.PTT_PRESSED);
                 }
 
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
 //                Toast.makeText(mCallActivity, "PTT Released...", Toast.LENGTH_SHORT).show();
                 Log.i(TAG, "PTT released");
                 if( mBound ){
-                    mSignaling.pttKey(0);
+                    mSignaling.pttKey(PTTSignaling.PTT_RELEASED);
                 }
             }
             // pretend we didn't consume the event, so the button has it

@@ -17,7 +17,12 @@ import java.nio.ByteBuffer;
  *
  * Created by liangc on 10/01/15.
  */
-public class AudioTxPath {
+public class AudioTxPath implements DataSource{
+    @Override
+    public void setCompletionHandler(CompletionHandler handler) {
+        mCompletionHandler = handler;
+    }
+
     public class AudioRecordConfiguration{
         static final int AUDIO_SAMPLE_RATE = 8000; // 8KHz
         static final int BUFFER_SIZE_MULTIPLIER = 10;
@@ -168,6 +173,9 @@ public class AudioTxPath {
             return;
         }
         Log.d(TAG, "got compressed audio, size = " + info.size + ", index = " + index);
+        if(mCompletionHandler != null){
+            mCompletionHandler.dataAvailable(mCodecOutputBuffers[index]);
+        }
         mMediaCodec.releaseOutputBuffer(index, false /* render */);
 
     }
@@ -216,4 +224,5 @@ public class AudioTxPath {
     MediaCodec          mMediaCodec;
     ByteBuffer[]        mCodecInputBuffers;
     ByteBuffer[]        mCodecOutputBuffers;
+    CompletionHandler   mCompletionHandler = null;
 }

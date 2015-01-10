@@ -1,6 +1,7 @@
 package com.bluesky.osprey.pttapp;
 
 import java.util.EnumMap;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.net.DatagramPacket;
@@ -43,6 +44,8 @@ public class PTTSignaling extends Handler{
 
     }
 
+    public static final int PTT_PRESSED = 1;
+    public static final int PTT_RELEASED    = 0;
 
     /** public methods */
     public PTTSignaling(Looper svcLooper, UDPService udpService){
@@ -80,7 +83,7 @@ public class PTTSignaling extends Handler{
      * @param pressed non-zero, pressed
      */
     public void pttKey(int pressed){
-        Message msg = Message.obtain(this, MSG_MAKE_CALL, pressed, 0);
+        Message msg = Message.obtain(this, MSG_PTT, pressed, 0);
         msg.sendToTarget();
     }
 
@@ -175,6 +178,15 @@ public class PTTSignaling extends Handler{
         mUdpService.send(payload);
     }
 
+    /** send compressed audio data */
+    private void sendCompressedAudioData(ByteBuffer compressedAudio, short seq){
+        CallData callData = new CallData(compressedAudio, seq);
+        callData.setSequence(++mSeqNumber);
+        ByteBuffer payload = ByteBuffer.allocate(callData.getSize());
+        callData.serialize(payload);
+        mUdpService.send(payload);
+    }
+
     /** create timer task */
     private TimerTask creatTimerTask(){
         return new TimerTask(){
@@ -191,7 +203,8 @@ public class PTTSignaling extends Handler{
     private final static int MSG_START          = 0;
     private final static int MSG_RXED_PACKET    = 1;
     private final static int MSG_TIME_EXPIRED   = 2;
-    private final static int MSG_MAKE_CALL      = 3;
+    private final static int MSG_PTT = 3;
+    private final static int MSG_TXPATH_STOPPED = 4; // tx path stopped itself
     private final static int MSG_STOP           = 99;
 
 
@@ -289,8 +302,10 @@ public class PTTSignaling extends Handler{
         @Override
         public State handleMessage(Message message) {
             switch(message.what){
-                case MSG_MAKE_CALL:
-                    mState = State.CALL_INITIATIATING;
+                case MSG_PTT:
+                    if( message.arg1 == PTT_PRESSED) {
+                        mState = State.CALL_INITIATIATING;
+                    }
                     break;
                 default:
                     break;
@@ -409,6 +424,24 @@ public class PTTSignaling extends Handler{
 
         @Override
         public State handleMessage(Message message) {
+            switch(message.what) {
+                case MSG_TXPATH_STOPPED:
+                    Log.d(TAG, "tx path stopped");
+                    mState = State.CALL_HANG;
+                    break;
+
+                case MSG_PTT:
+                    if( message.arg1 == PTT_RELEASED) {
+                        Log.d(TAG, "PTT released");
+                        mState = State.CALL_HANG;
+                    }
+                    break;
+
+                case MSG_RXED_PACKET:
+                    DatagramPacket packet = (DatagramPacket) message.obj;
+                    // TODO: handleRxedPacket(packet);
+                    break;
+            }
             return getState();
         }
 
@@ -416,22 +449,37 @@ public class PTTSignaling extends Handler{
         public void entry() {
             Log.i(TAG, "Call transmitting...");
 
+            mAudioTxSequence = (short)(new Random()).nextInt();
             // create encoder
             mAudioTxPath    = new AudioTxPath();
+            mAudioTxPath.setCompletionHandler(new CompressedAudioHandler());
             mAudioTxPath.start();
-            // enable microphone lineup
-            // start timer (?)
         }
 
         @Override
         public void exit() {
             // disable microphone lineup
             mAudioTxPath.stop();
-            // destory encoder
-            // stop timer (?)
         }
 
+
+        /** private methods and members */
+        private class CompressedAudioHandler implements DataSource.CompletionHandler {
+
+            @Override
+            public void dataAvailable(ByteBuffer byteBuffer) {
+                sendCompressedAudioData(byteBuffer, ++mAudioTxSequence);
+            }
+
+            @Override
+            public void onEndOfLife() {
+                //TODO: send message about self dead
+            }
+        }
+
+
         AudioTxPath     mAudioTxPath;
+        short           mAudioTxSequence;
     }
 
 }
