@@ -138,7 +138,9 @@ public class PTTSignaling extends Handler{
         aState = new StateCallTransmitting();
         mStateMap.put(State.CALL_TRANSMITTING, aState);
 
-        mState      = State.UNREGISTERED;
+//        mState      = State.UNREGISTERED;
+        mState = State.REGISTERED; // TODO: for debug only
+
         mStateNode  = mStateMap.get(mState);
         mStateNode.entry();
     }
@@ -180,7 +182,11 @@ public class PTTSignaling extends Handler{
 
     /** send compressed audio data */
     private void sendCompressedAudioData(ByteBuffer compressedAudio, short seq){
-        CallData callData = new CallData(compressedAudio, seq);
+        CallData callData = new CallData(
+                GlobalConstants.TGT_ID,
+                GlobalConstants.SUB_ID,
+                seq,
+                compressedAudio);
         callData.setSequence(++mSeqNumber);
         ByteBuffer payload = ByteBuffer.allocate(callData.getSize());
         callData.serialize(payload);
