@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.bluesky.protocol.*;
@@ -193,6 +194,18 @@ public class PTTSignaling extends Handler{
         mUdpService.send(payload);
     }
 
+    /** send call terminator */
+    private void sendCallTerminator(){
+        CallTerm callTerm = new CallTerm(
+                GlobalConstants.TGT_ID,
+                GlobalConstants.SUB_ID
+                );
+        callTerm.setSequence(++mSeqNumber);
+        ByteBuffer payload = ByteBuffer.allocate(callTerm.getSize());
+        callTerm.serialize(payload);
+        mUdpService.send(payload);
+    }
+
     /** create timer task */
     private TimerTask creatTimerTask(){
         return new TimerTask(){
@@ -203,6 +216,13 @@ public class PTTSignaling extends Handler{
             }
         };
     }
+
+    /** exception message, tx path stopped */
+    private void txPathStopped(){
+        Message msg = Message.obtain(this, MSG_TXPATH_STOPPED);
+        msg.sendToTarget();
+    }
+
 
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
@@ -348,22 +368,68 @@ public class PTTSignaling extends Handler{
         }
     }
 
+    /** call hang state, to send out 3 voice terminator, wait CALL_HANG expires or
+     *  callTerm from TrunkManager (indicating call hang time?) (whichever is earlier),
+     *  and transits to Registered state
+     */
     private class StateCallHang extends StateNode {
 
         @Override
         public State handleMessage(Message message) {
+            switch(message.what){
+                case MSG_TIME_EXPIRED:
+                    if(mCallTermCount <= GlobalConstants.CALL_TERMINATOR_NUMBER ){
+                        long delay;
+                        if( mCallTermCount < GlobalConstants.CALL_TERMINATOR_NUMBER) {
+                            sendCallTerminator();
+                            delay = GlobalConstants.CALL_PACKET_INTERVAL;
+                        } else {
+                            delay = GlobalConstants.CALL_HANG_PERIOD;
+                        }
+
+                        ++mCallTermCount;
+                        mTimerTask = creatTimerTask();
+                        mTimer.schedule(mTimerTask, delay);
+
+                    } else {
+                        mState = State.REGISTERED;
+                    }
+
+                    break;
+                case MSG_PTT:
+                    if( message.arg1 == PTT_PRESSED) {
+                        mState = State.CALL_INITIATIATING;
+                    }
+                    break;
+                case MSG_RXED_PACKET:
+//                    DatagramPacket packet = (DatagramPacket)message.obj;
+//                    handleRxedPacket(packet);
+                    break;
+            }
             return getState();
         }
 
         @Override
         public void entry() {
             Log.i(TAG, "Call hang");
+
+            // send first call term
+            sendCallTerminator();
+            ++mCallTermCount;
+
+            mTimerTask = creatTimerTask();
+            mTimer.schedule(mTimerTask,GlobalConstants.CALL_PACKET_INTERVAL);
         }
 
         @Override
         public void exit() {
-
+            mTimerTask.cancel();
+            mTimerTask  = null;
         }
+
+        /** private methods and members */
+        TimerTask   mTimerTask;
+        int         mCallTermCount = 0;
     }
 
     /** call initiatiating state, to send out 3 preambles, and jump to call transmitting
@@ -432,7 +498,7 @@ public class PTTSignaling extends Handler{
         public State handleMessage(Message message) {
             switch(message.what) {
                 case MSG_TXPATH_STOPPED:
-                    Log.d(TAG, "tx path stopped");
+                    Log.w(TAG, "tx path stopped prior to PTT release");
                     mState = State.CALL_HANG;
                     break;
 
@@ -447,6 +513,7 @@ public class PTTSignaling extends Handler{
                     DatagramPacket packet = (DatagramPacket) message.obj;
                     // TODO: handleRxedPacket(packet);
                     break;
+
             }
             return getState();
         }
@@ -479,7 +546,7 @@ public class PTTSignaling extends Handler{
 
             @Override
             public void onEndOfLife() {
-                //TODO: send message about self dead
+                txPathStopped();
             }
         }
 

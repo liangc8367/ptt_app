@@ -19,6 +19,9 @@ public class GlobalConstants {
     public final static int CALL_PACKET_INTERVAL       = 20; // 20ms TODO: consider 40ms
     public final static int CALL_PREAMBLE_NUMBER      = 3;  // 3 preambles (3 * 20);
 
+    public final static int CALL_HANG_PERIOD            = 5 * 1000; // 5 second
+    public final static int CALL_TERMINATOR_NUMBER      = 3; // 3 call terminator (3 * 20)
+
     /** tentative subscriber parameters */
     public static final short INIT_SEQ_NUMBER = 22321;
 
