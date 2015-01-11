@@ -173,6 +173,8 @@ public class AudioTxPath implements DataSource{
             return;
         }
         Log.d(TAG, "got compressed audio, size = " + info.size + ", index = " + index);
+        mCodecOutputBuffers[index].position(info.offset);
+        mCodecOutputBuffers[index].limit(info.offset + info.size);
         if(mCompletionHandler != null){
             mCompletionHandler.dataAvailable(mCodecOutputBuffers[index]);
         }

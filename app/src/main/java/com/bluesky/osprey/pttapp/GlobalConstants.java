@@ -7,7 +7,7 @@ public class GlobalConstants {
     public static final String TAG="PTTApp";
 
     /** connectivity parameters */
-    public static final String TRUNK_CENTER_ADDR    = "10.0.2.2"; // "192.168.0.105";
+    public static final String TRUNK_CENTER_ADDR    = "192.168.0.105";  //"10.0.2.2"; //
     public static final int TRUNK_CENTER_PORT   = 32000;
     public static final int LOCAL_PORT   = TRUNK_CENTER_PORT + 1;
 
