@@ -100,14 +100,6 @@ public class UDPService extends Thread{
             return ;
         }
 
-        // send out a beacon
-        {
-            ByteBuffer payload = ByteBuffer.allocate(10);
-            short v = 0x344;
-            payload.putShort(v);
-            send(payload);
-        }
-
         Log.e(TAG, "local address=" + mSocket.getLocalAddress() + ":" + mSocket.getLocalPort());
         Log.e(TAG, "remote address =" + mSocket.getInetAddress() + ":" + mSocket.getPort());
         while(mRunning){
