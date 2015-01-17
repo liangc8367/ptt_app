@@ -1,5 +1,7 @@
 package com.bluesky.osprey.pttapp;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Created by liangc on 24/12/14.
  */
@@ -18,6 +20,8 @@ public class GlobalConstants {
 
     public final static int CALL_PACKET_INTERVAL       = 20; // 20ms TODO: consider 40ms
     public final static int CALL_PREAMBLE_NUMBER      = 3;  // 3 preambles (3 * 20);
+    public final static TimeUnit TIME_UNIT                   = TimeUnit.MILLISECONDS;
+    public final static int JITTER_DEPTH                = 6;
 
     public final static int CALL_HANG_PERIOD            = 5 * 1000; // 5 second
     public final static int CALL_TERMINATOR_NUMBER      = 3; // 3 call terminator (3 * 20)

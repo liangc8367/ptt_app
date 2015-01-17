@@ -223,6 +223,15 @@ public class PTTSignaling extends Handler{
         msg.sendToTarget();
     }
 
+    /** create audio rx path */
+    private void createAudioRxPath(){
+
+    }
+
+    private void stopAudioRxPath(){
+
+    }
+
 
     /** private members */
     private final static String TAG=GlobalConstants.TAG + ":Signaling";
@@ -333,6 +342,10 @@ public class PTTSignaling extends Handler{
                         mState = State.CALL_INITIATIATING;
                     }
                     break;
+
+                case MSG_RXED_PACKET:
+                    DatagramPacket packet = (DatagramPacket)message.obj;
+                    handleRxedPacket(packet);
                 default:
                     break;
             }
@@ -348,23 +361,38 @@ public class PTTSignaling extends Handler{
         public void exit() {
 
         }
+
+        private void handleRxedPacket(DatagramPacket packet){
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            if( protoType == ProtocolBase.PTYPE_CALL_INIT){
+                CallInit callInit =
+                        (CallInit)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+
+                //TODO: validate callInit
+                mState = State.CALL_RECEIVING;
+                Log.i(TAG, "received call init, target = " + callInit.getTargetId()
+                            + ", source = " + callInit.getSuid());
+            }
+        }
     }
 
     private class StateCallReceiving extends StateNode {
 
         @Override
         public State handleMessage(Message message) {
+
             return getState();
         }
 
         @Override
         public void entry() {
             Log.i(TAG, "Call receiving");
+            createAudioRxPath();
         }
 
         @Override
         public void exit() {
-
+            stopAudioRxPath();
         }
     }
 
