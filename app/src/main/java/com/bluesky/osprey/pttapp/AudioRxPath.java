@@ -24,7 +24,8 @@ public class AudioRxPath {
     public class AudioTrackConfiguration{
         static final int AUDIO_SAMPLE_RATE = 8000; // 8KHz
         static final int BUFFER_SIZE_MULTIPLIER = 10;
-        static final int AUDIO_PCM20MS_SIZE = (AUDIO_SAMPLE_RATE *2 * 20 /1000);
+        static final int AUDIO_PCM20MS_SIZE =
+                (AUDIO_SAMPLE_RATE *2 * GlobalConstants.CALL_PACKET_INTERVAL /1000);
     }
 
     public class AudioDecoderConfiguration {
@@ -40,7 +41,7 @@ public class AudioRxPath {
             @Override
             public void run(){
 
-                generateTone();
+                preloadTone();
 
                 Log.i(TAG, "Audio Rx thread started");
                 boolean bAwaitFirst = true;
@@ -69,7 +70,8 @@ public class AudioRxPath {
                                     break;
                                 }
 
-                                compressedAudio = fakeLostPacket();
+//                                compressedAudio = fakeLostPacket();
+                                continue; //TODO:
                             }
                         } else {
                             mConsecutiveLostCount = 0;
@@ -103,10 +105,12 @@ public class AudioRxPath {
                         mDecoderOutputBuffers[index].position(info.offset);
                         mDecoderOutputBuffers[index].limit(info.offset + info.size);
 
-                        mAudioTrack.write(mDecoderOutputBuffers[index],
-                                info.size,
-                                AudioTrack.WRITE_NON_BLOCKING); //TODO: which write mode is proper?
-
+//                        mAudioTrack.write(mDecoderOutputBuffers[index],
+//                                info.size,
+//                                AudioTrack.WRITE_NON_BLOCKING); //TODO: which write mode is proper?
+                        mAudioTrack.write(mDecoderOutputBuffers[index].array(),
+                                  mDecoderOutputBuffers[index].arrayOffset(),
+                                info.size);
                         if(bAwaitFirst == true ){
                             bAwaitFirst = false;
                             mAudioTrack.play();
@@ -140,6 +144,8 @@ public class AudioRxPath {
     public boolean offerAudioData(ByteBuffer audio, short sequence){
         return mJitterBuffer.offer(audio, sequence);
     }
+
+    /** private methods  and members */
 
     private boolean configureAudioRxPath(){
         try {
@@ -188,6 +194,26 @@ public class AudioRxPath {
         mDecoder.stop();
         mDecoder.release();
         mDecoder = null;
+    }
+
+    private void preloadTone(){
+        ByteBuffer toneBuffer = generateTone();
+//        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
+        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.remaining());
+    }
+
+    private ByteBuffer generateTone(){
+        ByteBuffer tone = ByteBuffer.allocate(AudioTrackConfiguration.AUDIO_PCM20MS_SIZE);
+        int samples20ms = AudioTrackConfiguration.AUDIO_PCM20MS_SIZE / 2;
+        final double frequency = 950.0;
+        for( int i = 0; i< samples20ms; ++i){
+            double time = i / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
+            double sinValue =
+                    Math.sin(2*Math.PI * frequency * time);
+            short s = (short)sinValue;
+            tone.putShort((short)sinValue);
+        }
+        return tone;
     }
 
     private final JitterBuffer<ByteBuffer> mJitterBuffer =
