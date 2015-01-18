@@ -390,8 +390,6 @@ public class PTTSignaling extends Handler{
             mAudioRxPath = new AudioRxPath();
             mSavedHandler = mUdpService.setCompletionHandler(new UdpRxHandler());
             mUdpSwitcher.enableSwitch(true);
-            mAudioRxPath.start();
-
         }
 
         @Override

@@ -3,6 +3,7 @@ package com.bluesky.osprey.pttapp;
 import com.bluesky.JitterBuffer;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -36,91 +37,25 @@ public class AudioRxPath {
     public AudioRxPath(){
 
         configureAudioRxPath();
+        preloadTone();
 
+        mbAwaitFirst = true;
         mAudioThread = new Thread( new Runnable(){
             @Override
             public void run(){
 
-                preloadTone();
-
                 Log.i(TAG, "Audio Rx thread started");
-                boolean bAwaitFirst = true;
-                while(mRunning){
-                    int index;
-                    try {
-                        index = mDecoder.dequeueInputBuffer(0); // no wait
-                    } catch (Exception e){
-                        Log.e(TAG, "exception in dequeue: " + e);
-                        break;
+                while(mRunning) {
+                    ByteBuffer receivedAudio = pollJitterBuffer();
+                    if (receivedAudio == null) {
+                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
+                                " packets!, stopping AudioRx");
+                        break; //TODO: emit events
                     }
 
-                    Log.i(TAG, "decoder input index = " + index);
-                    if(index != MediaCodec.INFO_TRY_AGAIN_LATER){
-                        ByteBuffer compressedAudio = mJitterBuffer.poll();
-                        if( compressedAudio == null ){
-                            if( mRunning == false ){
-                                Log.i(TAG, "stopped" );
-                                break;
-                            } else {
-                                // fake a noise packet/audio lost
-                                Log.i(TAG, "no data from jitter buffer");
-                                ++mConsecutiveLostCount;
-                                if( mConsecutiveLostCount == GlobalConstants.JITTER_DEPTH ){
-                                    Log.i(TAG, "jitter empty");
-                                    break;
-                                }
-
-//                                compressedAudio = fakeLostPacket();
-                                continue; //TODO:
-                            }
-                        } else {
-                            mConsecutiveLostCount = 0;
-                        }
-
-                        mDecoderInputBuffers[index].clear();
-                        mDecoderInputBuffers[index].put(compressedAudio);
-
-                        mDecoder.queueInputBuffer(
-                                index,
-                                0, // offset
-                                mDecoderInputBuffers[index].remaining(),
-                                0, // presenttion timeUS
-                                0  // flags);
-                        );
-                    }
-
-                    // get decompressed audio
-                    MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-                    index = mDecoder.dequeueOutputBuffer(info, 0); // immediate
-                    if( index == MediaCodec.INFO_TRY_AGAIN_LATER ){
-                        ;
-                    } else if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ){
-                        ;
-                    } else if (index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
-                        mDecoderOutputBuffers = mDecoder.getOutputBuffers();
-                    } else {
-                        Log.i(TAG, "got decompressed audio, index = "
-                                + index + ", sz =" + info.size);
-
-                        mDecoderOutputBuffers[index].position(info.offset);
-                        mDecoderOutputBuffers[index].limit(info.offset + info.size);
-
-//                        mAudioTrack.write(mDecoderOutputBuffers[index],
-//                                info.size,
-//                                AudioTrack.WRITE_NON_BLOCKING); //TODO: which write mode is proper?
-                        mAudioTrack.write(mDecoderOutputBuffers[index].array(),
-                                  mDecoderOutputBuffers[index].arrayOffset(),
-                                info.size);
-                        if(bAwaitFirst == true ){
-                            bAwaitFirst = false;
-                            mAudioTrack.play();
-                        }
-
-                        mDecoder.releaseOutputBuffer(index, false /* render */);
-                    }
-
-                } // end of while(mRunning)
-
+                    decodeAudio(receivedAudio);
+                    playDecodedAudio();
+                }
                 cleanup();
             }// end of run()
         });
@@ -142,7 +77,11 @@ public class AudioRxPath {
      *
      */
     public boolean offerAudioData(ByteBuffer audio, short sequence){
-        return mJitterBuffer.offer(audio, sequence);
+        boolean res =  mJitterBuffer.offer(audio, sequence);
+        if( mbAwaitFirst){
+            start();
+        }
+        return res;
     }
 
     /** private methods  and members */
@@ -194,6 +133,9 @@ public class AudioRxPath {
         mDecoder.stop();
         mDecoder.release();
         mDecoder = null;
+
+        //TODO: clean jitterBuffer;
+        mInsideBuffer.clear();
     }
 
     private void preloadTone(){
@@ -216,16 +158,104 @@ public class AudioRxPath {
         return tone;
     }
 
+    /** poll jitter buffer, and sync noise packet if needed
+     *
+     * @return received audio, or faked noise packet, otherwise null if more than 6 lost
+     */
+    private ByteBuffer pollJitterBuffer() {
+        ByteBuffer compressedAudio = mJitterBuffer.poll();
+        if( compressedAudio == null ){
+                // fake a noise packet/audio lost
+                Log.i(TAG, "no data from jitter buffer");
+                ++mConsecutiveLostCount;
+                if( mConsecutiveLostCount == GlobalConstants.JITTER_DEPTH ){
+                    Log.i(TAG, "jitter empty");
+                    return null;
+                }
+                // compressedAudio = fakeLostPacket();
+                compressedAudio = null;
+        } else {
+            mConsecutiveLostCount = 0;
+        }
+        return compressedAudio;
+    }
+
+    /** keep decode audio if we can get a decoder input buffer, otherwise we park it aside
+     *
+     */
+    private void decodeAudio(ByteBuffer compressedAudio) {
+        mInsideBuffer.offer(compressedAudio);
+        ByteBuffer buf = mInsideBuffer.poll();
+        while( buf!= null ) {
+            int index = mDecoder.dequeueInputBuffer(0);
+            if( index >= 0) {
+                mDecoderInputBuffers[index].clear();
+                mDecoderInputBuffers[index].put(buf);
+
+                mDecoder.queueInputBuffer(
+                        index,
+                        0, // offset
+                        mDecoderInputBuffers[index].remaining(),
+                        0, // presenttion timeUS
+                        0  // flags);
+                );
+            } else {
+                Log.i(TAG, "empty decoder input buffer: " + index);
+                mInsideBuffer.addFirst(buf);
+                return;
+            }
+
+            buf = mInsideBuffer.poll();
+        }
+    }
+
+    /** keep writing decoded audio to Audio track, until no more decoded audio
+     *
+     */
+    private void playDecodedAudio() {
+        int index;
+        MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+        while( (index = mDecoder.dequeueOutputBuffer(info, 0))
+                != MediaCodec.INFO_TRY_AGAIN_LATER ){
+
+            if( index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
+                mDecoderOutputBuffers = mDecoder.getOutputBuffers();
+                continue;
+            }
+
+            Log.i(TAG, "got decompressed audio, index = "
+                    + index + ", sz =" + info.size);
+
+            mDecoderOutputBuffers[index].position(info.offset);
+            mDecoderOutputBuffers[index].limit(info.offset + info.size);
+            mAudioTrack.write(mDecoderOutputBuffers[index].array(),
+                    mDecoderOutputBuffers[index].arrayOffset(),
+                    info.size);
+
+            if(mbAwaitFirst == true ){
+                mbAwaitFirst = false;
+                mAudioTrack.play();
+            }
+
+            mDecoder.releaseOutputBuffer(index, false /* render */);
+        }
+    }
+
     private final JitterBuffer<ByteBuffer> mJitterBuffer =
             new JitterBuffer<ByteBuffer>(GlobalConstants.JITTER_DEPTH,
                     GlobalConstants.CALL_PACKET_INTERVAL,
                     GlobalConstants.TIME_UNIT);
 
+    private final LinkedList<ByteBuffer> mInsideBuffer = new LinkedList<ByteBuffer>();
+
     private Thread mAudioThread;
     private MediaCodec mDecoder;
     private ByteBuffer[] mDecoderInputBuffers, mDecoderOutputBuffers;
     private AudioTrack mAudioTrack;
+
+
     private int mConsecutiveLostCount = 0;
+    boolean mbAwaitFirst;
     private boolean mRunning = false;
     private static final String TAG = "AudioRxPath";
 }
