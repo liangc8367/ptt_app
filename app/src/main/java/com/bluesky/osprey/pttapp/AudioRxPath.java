@@ -210,8 +210,8 @@ public class AudioRxPath {
             double time = i / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
             double sinValue =
                     Math.sin(2*Math.PI * frequency * time);
-            short s = (short)sinValue;
-            tone.putShort((short)sinValue);
+            short s = (short)(sinValue * (short)20000);
+            tone.putShort(s);
         }
         return tone;
     }

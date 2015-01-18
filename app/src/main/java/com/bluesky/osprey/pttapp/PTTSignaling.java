@@ -223,14 +223,6 @@ public class PTTSignaling extends Handler{
         msg.sendToTarget();
     }
 
-    /** create audio rx path */
-    private void createAudioRxPath(){
-
-    }
-
-    private void stopAudioRxPath(){
-
-    }
 
 
     /** private members */
@@ -261,6 +253,7 @@ public class PTTSignaling extends Handler{
             msg.sendToTarget();
         }
     }
+
 
 
 
@@ -380,6 +373,13 @@ public class PTTSignaling extends Handler{
 
         @Override
         public State handleMessage(Message message) {
+            switch(message.what) {
+                case MSG_RXED_PACKET:
+                    DatagramPacket packet = (DatagramPacket) message.obj;
+                    handleRxedPacket(packet);
+                default:
+                    break;
+            }
 
             return getState();
         }
@@ -387,13 +387,60 @@ public class PTTSignaling extends Handler{
         @Override
         public void entry() {
             Log.i(TAG, "Call receiving");
-            createAudioRxPath();
+            mAudioRxPath = new AudioRxPath();
+            mSavedHandler = mUdpService.setCompletionHandler(new UdpRxHandler());
+            mUdpSwitcher.enableSwitch(true);
+            mAudioRxPath.start();
+
         }
 
         @Override
         public void exit() {
-            stopAudioRxPath();
+            mUdpService.setCompletionHandler(mSavedHandler);
+            mUdpSwitcher.enableSwitch(false);
+            mAudioRxPath.stop();
+            mAudioRxPath = null;
         }
+
+        private void handleRxedPacket(DatagramPacket packet){
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            if( protoType == ProtocolBase.PTYPE_CALL_TERM){
+                CallTerm callTerm =
+                        (CallTerm)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+
+                //TODO: validate call term
+                mState = State.CALL_HANG;
+                Log.i(TAG, "received call term, target = " + callTerm.getTargetId()
+                        + ", source = " + callTerm.getSuid());
+            }
+        }
+
+        private class UdpRxSwitchHandler extends UdpRxHandler {
+            @Override
+            public void completed(DatagramPacket packet){
+                short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+                if( mbSwitching && (protoType == ProtocolBase.PTYPE_CALL_DATA)) {
+                    // route audio data to audioRxPath
+                    CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
+                    mAudioRxPath.offerAudioData(callData.getAudioData(), callData.getSequence());
+
+                } else {
+                    // for the rest, sent to signaling
+                    super.completed(packet);
+                }
+            }
+
+            public void enableSwitch(boolean enable){
+                mbSwitching = enable;
+            }
+
+            boolean mbSwitching = false;
+        }
+
+        AudioRxPath     mAudioRxPath;
+        UDPService.CompletionHandler    mSavedHandler;
+        final UdpRxSwitchHandler mUdpSwitcher = new UdpRxSwitchHandler();
+
     }
 
     /** call hang state, to send out 3 voice terminator, wait CALL_HANG expires or
@@ -582,5 +629,6 @@ public class PTTSignaling extends Handler{
         AudioTxPath     mAudioTxPath;
         short           mAudioTxSequence;
     }
+
 
 }

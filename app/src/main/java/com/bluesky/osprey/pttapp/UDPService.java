@@ -45,8 +45,11 @@ public class UDPService extends Thread{
         mConfig = config;
     }
 
-    public void setCompletionHandler(CompletionHandler handler){
+    /** set new completion handler,and return the old one */
+    public CompletionHandler setCompletionHandler(CompletionHandler handler){
+        CompletionHandler origHandler = mRegisteredHandler;
         mRegisteredHandler = handler;
+        return origHandler;
     }
 
     public boolean startService(){

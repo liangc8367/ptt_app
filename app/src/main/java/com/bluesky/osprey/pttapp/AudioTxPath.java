@@ -8,6 +8,7 @@ import android.media.MediaRecorder;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * Thread driven audio transmission path, which is composed of
@@ -159,6 +160,8 @@ public class AudioTxPath implements DataSource{
             );
         }
 
+        // analyzeAudio(mCodecInputBuffers[index]);
+
         // try to get encoded audio
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
         index = mMediaCodec.dequeueOutputBuffer(info, 0);
@@ -211,12 +214,31 @@ public class AudioTxPath implements DataSource{
                 releaseAudioRecord();
                 mState = State.ZOMBIE;
 
+                // reportAudioInfo();
                 Log.i(TAG, "stopped");
             }
         }, TAG);
 
         mAudioThread.start();
         mState = State.RUNNING;
+    }
+
+    private void analyzeAudio(ByteBuffer pcmAudio){
+        ShortBuffer shortBuf = pcmAudio.asShortBuffer();
+        for(int i = 0; i< shortBuf.remaining(); ++i){
+            short v = shortBuf.get();
+            if( v > mAudioInfoStats.maxVal ){
+                mAudioInfoStats.maxVal = v;
+            }
+            if( v < mAudioInfoStats.minVal ){
+                mAudioInfoStats.minVal = v;
+            }
+        }
+    }
+
+    private void reportAudioInfo(){
+        Log.i(TAG, "audio info: max =" + mAudioInfoStats.maxVal
+                + ", min = " + mAudioInfoStats.minVal);
     }
 
     static final String TAG = "AudioTxPath";
@@ -227,4 +249,11 @@ public class AudioTxPath implements DataSource{
     ByteBuffer[]        mCodecInputBuffers;
     ByteBuffer[]        mCodecOutputBuffers;
     CompletionHandler   mCompletionHandler = null;
+
+    private class AudioInfoStats{
+        public short minVal = Short.MIN_VALUE;
+        public short maxVal = Short.MIN_VALUE;
+    }
+
+    final AudioInfoStats mAudioInfoStats = new AudioInfoStats();
 }
