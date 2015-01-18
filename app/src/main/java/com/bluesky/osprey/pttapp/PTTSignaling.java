@@ -388,8 +388,8 @@ public class PTTSignaling extends Handler{
         public void entry() {
             Log.i(TAG, "Call receiving");
             mAudioRxPath = new AudioRxPath();
-            mSavedHandler = mUdpService.setCompletionHandler(new UdpRxHandler());
             mUdpSwitcher.enableSwitch(true);
+            mSavedHandler = mUdpService.setCompletionHandler(mUdpSwitcher);
         }
 
         @Override
@@ -420,7 +420,7 @@ public class PTTSignaling extends Handler{
                 if( mbSwitching && (protoType == ProtocolBase.PTYPE_CALL_DATA)) {
                     // route audio data to audioRxPath
                     CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
-                    mAudioRxPath.offerAudioData(callData.getAudioData(), callData.getSequence());
+                    mAudioRxPath.offerAudioData(callData.getAudioData(), callData.getAudioSeq());
 
                 } else {
                     // for the rest, sent to signaling

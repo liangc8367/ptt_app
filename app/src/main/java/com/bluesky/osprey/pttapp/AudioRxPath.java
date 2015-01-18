@@ -149,7 +149,7 @@ public class AudioRxPath {
         int samples20ms = AudioTrackConfiguration.AUDIO_PCM20MS_SIZE / 2;
         final double frequency = 950.0;
         for( int i = 0; i< samples20ms; ++i){
-            double time = i / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
+            double time = (double)i / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
             double sinValue =
                     Math.sin(2*Math.PI * frequency * time);
             short s = (short)(sinValue * (short)20000);
@@ -185,8 +185,8 @@ public class AudioRxPath {
      */
     private void decodeAudio(ByteBuffer compressedAudio) {
         mInsideBuffer.offer(compressedAudio);
-        ByteBuffer buf = mInsideBuffer.poll();
-        while( buf!= null ) {
+        ByteBuffer buf;
+        while( (buf = mInsideBuffer.poll())!= null ) {
             int index = mDecoder.dequeueInputBuffer(0);
             if( index >= 0) {
                 mDecoderInputBuffers[index].clear();
@@ -204,8 +204,6 @@ public class AudioRxPath {
                 mInsideBuffer.addFirst(buf);
                 return;
             }
-
-            buf = mInsideBuffer.poll();
         }
     }
 
@@ -215,8 +213,16 @@ public class AudioRxPath {
     private void playDecodedAudio() {
         int index;
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-        while( (index = mDecoder.dequeueOutputBuffer(info, 0))
-                != MediaCodec.INFO_TRY_AGAIN_LATER ){
+
+        while( true ){
+            index = mDecoder.dequeueOutputBuffer(info, 0);
+            if (index == MediaCodec.INFO_TRY_AGAIN_LATER ) {
+                break;
+            }
+
+            if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ){
+                continue;
+            }
 
             if( index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
                 mDecoderOutputBuffers = mDecoder.getOutputBuffers();
@@ -228,9 +234,10 @@ public class AudioRxPath {
 
             mDecoderOutputBuffers[index].position(info.offset);
             mDecoderOutputBuffers[index].limit(info.offset + info.size);
-            mAudioTrack.write(mDecoderOutputBuffers[index].array(),
-                    mDecoderOutputBuffers[index].arrayOffset(),
-                    info.size);
+
+            mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size); //for API3
+
+            mAudioTrack.write(mRawAudioData, 0, info.size);
 
             if(mbAwaitFirst == true ){
                 mbAwaitFirst = false;
@@ -253,6 +260,7 @@ public class AudioRxPath {
     private ByteBuffer[] mDecoderInputBuffers, mDecoderOutputBuffers;
     private AudioTrack mAudioTrack;
 
+    private byte[] mRawAudioData = new byte[1000]; //should be enough for AMR-NB one frame, for API3
 
     private int mConsecutiveLostCount = 0;
     boolean mbAwaitFirst;
