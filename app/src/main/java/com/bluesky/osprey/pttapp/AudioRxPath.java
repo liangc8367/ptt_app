@@ -63,9 +63,10 @@ public class AudioRxPath {
 
 
     public void start(){
-        mRunning = true;
-        mAudioThread.start();
-
+        if(!mRunning) {
+            mRunning = true;
+            mAudioThread.start();
+        }
     }
 
     public void stop(){
@@ -187,6 +188,10 @@ public class AudioRxPath {
         mInsideBuffer.offer(compressedAudio);
         ByteBuffer buf;
         while( (buf = mInsideBuffer.poll())!= null ) {
+            Log.i(TAG, "decomp[" + (++mDecompCount) + "]:"
+                + buf.getShort(2) + ":"
+                + buf.getShort(3));
+
             int index = mDecoder.dequeueInputBuffer(0);
             if( index >= 0) {
                 mDecoderInputBuffers[index].clear();
@@ -214,38 +219,42 @@ public class AudioRxPath {
         int index;
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
-        while( true ){
-            index = mDecoder.dequeueOutputBuffer(info, 0);
-            if (index == MediaCodec.INFO_TRY_AGAIN_LATER ) {
-                break;
-            }
-
-            if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ){
-                continue;
-            }
-
-            if( index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
-                mDecoderOutputBuffers = mDecoder.getOutputBuffers();
-                continue;
-            }
-
-            Log.i(TAG, "got decompressed audio, index = "
-                    + index + ", sz =" + info.size);
-
-            mDecoderOutputBuffers[index].position(info.offset);
-            mDecoderOutputBuffers[index].limit(info.offset + info.size);
-
-            mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size); //for API3
-
-            mAudioTrack.write(mRawAudioData, 0, info.size);
-
-            if(mbAwaitFirst == true ){
-                mbAwaitFirst = false;
-                mAudioTrack.play();
-            }
-
-            mDecoder.releaseOutputBuffer(index, false /* render */);
+        index = mDecoder.dequeueOutputBuffer(info, 0);
+        if (index == MediaCodec.INFO_TRY_AGAIN_LATER ) {
+            return;
         }
+
+        if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ){
+            return;
+        }
+
+        if( index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
+            mDecoderOutputBuffers = mDecoder.getOutputBuffers();
+            return;
+        }
+
+        Log.i(TAG, "got decompressed audio, index = "
+                + index + ", sz =" + info.size);
+
+        mDecoderOutputBuffers[index].position(info.offset);
+        mDecoderOutputBuffers[index].limit(info.offset + info.size);
+
+        mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size); //for API3
+
+        ByteBuffer buf = ByteBuffer.wrap(mRawAudioData, 0, info.size);
+        Log.i(TAG, "play[" + (++mPlayCount) + "]:"
+                + buf.getShort(2) + ":"
+                + buf.getShort(3));
+
+
+        mAudioTrack.write(mRawAudioData, 0, info.size);
+
+        if(mbAwaitFirst == true ){
+            mbAwaitFirst = false;
+            mAudioTrack.play();
+        }
+
+        mDecoder.releaseOutputBuffer(index, false /* render */);
     }
 
     private final JitterBuffer<ByteBuffer> mJitterBuffer =
@@ -261,6 +270,9 @@ public class AudioRxPath {
     private AudioTrack mAudioTrack;
 
     private byte[] mRawAudioData = new byte[1000]; //should be enough for AMR-NB one frame, for API3
+
+    private int mPlayCount = 0;
+    private int mDecompCount = 0;
 
     private int mConsecutiveLostCount = 0;
     boolean mbAwaitFirst;
