@@ -6,8 +6,15 @@ import android.content.Intent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
+import com.bluesky.protocol.CallData;
+import com.bluesky.protocol.ProtocolBase;
+import com.bluesky.protocol.ProtocolFactory;
+
+import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -42,33 +49,92 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void onStartPTTService(View view) {
-        Intent intent = new Intent(this, PTTAppService.class);
-        startService(intent);
+//        //XXX
+//        Intent intent = new Intent(this, PTTAppService.class);
+//        startService(intent);
 
-// for debugging purpose only
-//        // create udp service
-//        UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
-//        //TODO: read configuration from database
-//
-//        udpSvcConfig.addrServer = new InetSocketAddress(
-//                GlobalConstants.TRUNK_CENTER_ADDR,
-//                GlobalConstants.TRUNK_CENTER_PORT);
-//        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
-//        mUdpService = new UDPService(udpSvcConfig);
-//        mUdpService.startService();
+//        // start Call Activity
+//        intent = new Intent(this, CallActivity.class);
+//        startActivity(intent);
 
-        // start Call Activity
-        intent = new Intent(this, CallActivity.class);
-        startActivity(intent);
+
+        // start rx audio path directly
+        mAudioRxPath = new AudioRxPath();
+        mAudioRxPath.start();
+
+        // create udp service
+        if( false ) {
+
+            UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
+            //TODO: read configuration from database
+
+            udpSvcConfig.addrServer = new InetSocketAddress(
+                    GlobalConstants.TRUNK_CENTER_ADDR,
+                    GlobalConstants.TRUNK_CENTER_PORT);
+            udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
+            mUdpService = new UDPService(udpSvcConfig);
+            mUdpHandler = new UdpHandler();
+            mUdpService.setCompletionHandler(mUdpHandler);
+            mUdpService.startService();
+        }
+        Toast.makeText(this, "receiving compressed audio...", Toast.LENGTH_SHORT).show();
+
     }
 
     public void onStopService(View view){
-        Intent intent = new Intent(this, PTTAppService.class);
-        stopService(intent);
+        //XXX
+//        Intent intent = new Intent(this, PTTAppService.class);
+//        stopService(intent);
+        if( mAudioRxPath != null){
+            mAudioRxPath.stop();
+            mAudioRxPath = null;
+            Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
+        }
+
+        if( false ) {
+            if (mUdpService != null) {
+
+                mUdpService.stopService();
+                mAudioRxPath.stop();
+                mUdpService = null;
+                Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private class UdpHandler implements UDPService.CompletionHandler {
+        @Override
+        public void completed(DatagramPacket packet) {
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            switch (protoType) {
+                case ProtocolBase.PTYPE_CALL_INIT:
+                    if (mAudioRxPath == null) {
+                        mAudioRxPath = new AudioRxPath();
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    if (mAudioRxPath != null) {
+                        mAudioRxPath.stop();
+                        mAudioRxPath = null;
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_DATA:
+                    if (mAudioRxPath != null) {
+                        CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
+                        ByteBuffer audioPayload = callData.getAudioData();
+                        short seq = callData.getAudioSeq();
+                        mAudioRxPath.offerAudioData(audioPayload, seq);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     /** private members */
     UDPService  mUdpService;
-
+    AudioRxPath mAudioRxPath;
+    UdpHandler  mUdpHandler;
 
 }

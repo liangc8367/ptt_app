@@ -37,7 +37,7 @@ public class AudioRxPath {
     public AudioRxPath(){
 
         configureAudioRxPath();
-        preloadTone();
+//        preloadTone();
 
         mbAwaitFirst = true;
         mAudioThread = new Thread( new Runnable(){
@@ -46,14 +46,16 @@ public class AudioRxPath {
 
                 Log.i(TAG, "Audio Rx thread started");
                 while(mRunning) {
-                    ByteBuffer receivedAudio = pollJitterBuffer();
-                    if (receivedAudio == null) {
-                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
-                                " packets!, stopping AudioRx");
-                        break; //TODO: emit events
-                    }
-
-                    decodeAudio(receivedAudio);
+//                    if( false ) {
+//                        ByteBuffer receivedAudio = pollJitterBuffer();
+//                        if (receivedAudio == null) {
+//                            Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
+//                                    " packets!, stopping AudioRx");
+//                            break; //TODO: emit events
+//                        }
+//
+//                        decodeAudio(receivedAudio);
+//                    }
                     playDecodedAudio();
                 }
                 cleanup();
@@ -79,7 +81,10 @@ public class AudioRxPath {
      */
     public boolean offerAudioData(ByteBuffer audio, short sequence){
         boolean res =  mJitterBuffer.offer(audio, sequence);
-        if( mbAwaitFirst){
+//        if( mbAwaitFirst){
+//            start();
+//        }
+        if(!mRunning){
             start();
         }
         return res;
@@ -234,12 +239,15 @@ public class AudioRxPath {
         }
 
         Log.i(TAG, "got decompressed audio, index = "
-                + index + ", sz =" + info.size);
+                + index + ", sz =" + info.size
+                + ", us =" + info.presentationTimeUs
+                + ", flags=" +info.flags);
 
         mDecoderOutputBuffers[index].position(info.offset);
         mDecoderOutputBuffers[index].limit(info.offset + info.size);
-
         mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size); //for API3
+
+        mDecoder.releaseOutputBuffer(index, false /* render */);
 
         ByteBuffer buf = ByteBuffer.wrap(mRawAudioData, 0, info.size);
         Log.i(TAG, "play[" + (++mPlayCount) + "]:"
@@ -249,12 +257,14 @@ public class AudioRxPath {
 
         mAudioTrack.write(mRawAudioData, 0, info.size);
 
-        if(mbAwaitFirst == true ){
-            mbAwaitFirst = false;
+//        if(mbAwaitFirst == true ){
+//            mbAwaitFirst = false;
+//            mAudioTrack.play();
+//        }
+        if( mPlayCount == 2){
             mAudioTrack.play();
         }
 
-        mDecoder.releaseOutputBuffer(index, false /* render */);
     }
 
     private final JitterBuffer<ByteBuffer> mJitterBuffer =
