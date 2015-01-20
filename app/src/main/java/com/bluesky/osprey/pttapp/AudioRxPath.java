@@ -45,6 +45,8 @@ public class AudioRxPath {
             public void run(){
 
                 Log.i(TAG, "Audio Rx thread started");
+                startDecoder();
+                mPlayCount = 0;
                 while(mRunning) {
 //                    ByteBuffer receivedAudio = pollJitterBuffer();
 //                    if (receivedAudio == null) {
@@ -63,17 +65,14 @@ public class AudioRxPath {
         });
     }
 
-
-    public void start(){
-        if(!mRunning) {
-            mRunning = true;
-            mAudioThread.start();
-        }
-    }
-
+    /** stop audio rx path abruptly, discard whatever bufferred audio
+     *
+     */
     public void stop(){
-        mRunning = false;
-        mAudioThread.interrupt();
+        if( mRunning ) {
+            mRunning = false;
+            mAudioThread.interrupt();
+        }
     }
 
     /** offer compressed audio data to Rx path
@@ -81,10 +80,6 @@ public class AudioRxPath {
      */
     public boolean offerAudioData(ByteBuffer audio, short sequence){
         boolean res = mInsideBuffer.offer(audio);
-//        boolean res =  mJitterBuffer.offer(audio, sequence);
-//        if( mbAwaitFirst){
-//            start();
-//        }
         if(!mRunning){
             start();
         }
@@ -92,6 +87,14 @@ public class AudioRxPath {
     }
 
     /** private methods  and members */
+
+    /* audio rx path is data driven, i.e. start when the 1st data comes */
+    private void start(){
+        if(!mRunning) {
+            mRunning = true;
+            mAudioThread.start();
+        }
+    }
 
     private boolean configureAudioRxPath(){
         try {
@@ -126,10 +129,13 @@ public class AudioRxPath {
             return false;
         }
 
+        return true;
+    }
+
+    private void startDecoder(){
         mDecoder.start();
         mDecoderInputBuffers = mDecoder.getInputBuffers();
         mDecoderOutputBuffers = mDecoder.getOutputBuffers();
-        return true;
     }
 
     private void cleanup(){
@@ -143,6 +149,8 @@ public class AudioRxPath {
 
         //TODO: clean jitterBuffer;
         mInsideBuffer.clear();
+
+        mRunning = false;
     }
 
     private void preloadTone(){
@@ -194,20 +202,11 @@ public class AudioRxPath {
 //        mInsideBuffer.offer(compressedAudio);
         ByteBuffer buf;
         while( (buf = mInsideBuffer.poll())!= null ) {
-            Log.i(TAG, "decomp[" + (++mDecompCount) + "]: sz="
-                    + buf.remaining() + ":"
-                + buf.getShort(2) + ":"
-                + buf.getShort(3) + "===> " + buf.get(4) + ":" + buf.get(5));
 
             int index = mDecoder.dequeueInputBuffer(0);
             if( index >= 0) {
                 mDecoderInputBuffers[index].clear();
                 mDecoderInputBuffers[index].put(buf);
-
-                Log.i(TAG, "--" + mDecoderInputBuffers[index].getShort(2)
-                        + ":" + mDecoderInputBuffers[index].getShort(3)
-                        + "====> " + mDecoderInputBuffers[index].get(4)
-                        + ":" + mDecoderInputBuffers[index].get(5));
 
                 mDecoder.queueInputBuffer(
                         index,
@@ -231,47 +230,32 @@ public class AudioRxPath {
         int index;
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
-        index = mDecoder.dequeueOutputBuffer(info, 0);
-        if (index == MediaCodec.INFO_TRY_AGAIN_LATER ) {
-            return;
+        while((index = mDecoder.dequeueOutputBuffer(info, 0)) != MediaCodec.INFO_TRY_AGAIN_LATER ) {
+
+            if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                continue;
+            }
+
+            if (index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                mDecoderOutputBuffers = mDecoder.getOutputBuffers();
+                continue;
+            }
+
+            mDecoderOutputBuffers[index].position(info.offset);
+            mDecoderOutputBuffers[index].limit(info.offset + info.size);
+
+            //for API3, I have to use write(byte[]...), and thus have to do a copy.
+            // if I use API21, then I can write decoder output buffer directly to audioTrack.
+            mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size);
+            mDecoder.releaseOutputBuffer(index, false /* render */);
+
+            mAudioTrack.write(mRawAudioData, 0, info.size);
+
+            ++mPlayCount;
+            if (mPlayCount == 2) {
+                mAudioTrack.play();
+            }
         }
-
-        if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ){
-            return;
-        }
-
-        if( index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ){
-            mDecoderOutputBuffers = mDecoder.getOutputBuffers();
-            return;
-        }
-
-        Log.i(TAG, "got decompressed audio, index = "
-                + index + ", sz =" + info.size
-                + ", us =" + info.presentationTimeUs
-                + ", flags=" +info.flags);
-
-        mDecoderOutputBuffers[index].position(info.offset);
-        mDecoderOutputBuffers[index].limit(info.offset + info.size);
-        mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size); //for API3
-
-        mDecoder.releaseOutputBuffer(index, false /* render */);
-
-        ByteBuffer buf = ByteBuffer.wrap(mRawAudioData, 0, info.size);
-        Log.i(TAG, "play[" + (++mPlayCount) + "]:"
-                + buf.getShort(2) + ":"
-                + buf.getShort(3));
-
-
-        mAudioTrack.write(mRawAudioData, 0, info.size);
-
-//        if(mbAwaitFirst == true ){
-//            mbAwaitFirst = false;
-//            mAudioTrack.play();
-//        }
-        if( mPlayCount == 2){
-            mAudioTrack.play();
-        }
-
     }
 
     private final JitterBuffer<ByteBuffer> mJitterBuffer =
@@ -289,7 +273,7 @@ public class AudioRxPath {
     private byte[] mRawAudioData = new byte[1000]; //should be enough for AMR-NB one frame, for API3
 
     private int mPlayCount = 0;
-    private int mDecompCount = 0;
+    private int mLostCount = 0;
 
     private int mConsecutiveLostCount = 0;
     boolean mbAwaitFirst;
