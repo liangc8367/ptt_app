@@ -27,6 +27,7 @@ public class AudioRxPath {
         static final int BUFFER_SIZE_MULTIPLIER = 10;
         static final int AUDIO_PCM20MS_SIZE =
                 (AUDIO_SAMPLE_RATE *2 * GlobalConstants.CALL_PACKET_INTERVAL /1000);
+        static final int AUDIO_TONE_SIZE = AUDIO_PCM20MS_SIZE * 5; // 100ms tone
     }
 
     public class AudioDecoderConfiguration {
@@ -37,7 +38,7 @@ public class AudioRxPath {
     public AudioRxPath(){
 
         configureAudioRxPath();
-//        preloadTone();
+        preloadTone();
 
         mbAwaitFirst = true;
         mAudioThread = new Thread( new Runnable(){
@@ -156,14 +157,14 @@ public class AudioRxPath {
     private void preloadTone(){
         ByteBuffer toneBuffer = generateTone();
 //        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
-        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.remaining());
+        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
     }
 
     private ByteBuffer generateTone(){
-        ByteBuffer tone = ByteBuffer.allocate(AudioTrackConfiguration.AUDIO_PCM20MS_SIZE);
-        int samples20ms = AudioTrackConfiguration.AUDIO_PCM20MS_SIZE / 2;
+        ByteBuffer tone = ByteBuffer.allocate(AudioTrackConfiguration.AUDIO_TONE_SIZE);
+        int toneSamples = AudioTrackConfiguration.AUDIO_TONE_SIZE / 2;
         final double frequency = 950.0;
-        for( int i = 0; i< samples20ms; ++i){
+        for( int i = 0; i< toneSamples; ++i){
             double time = (double)i / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
             double sinValue =
                     Math.sin(2*Math.PI * frequency * time);

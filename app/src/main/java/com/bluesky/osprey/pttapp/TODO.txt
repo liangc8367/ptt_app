@@ -1,7 +1,7 @@
 TODO list
 ---------
 4) impl receiving;
-    - tone generator
+    - tone generator (ok, but a little noisy)
     - tone generator (use hardcoded tone?)
     - jitter buffer
     - noise packet
