@@ -58,6 +58,7 @@ public class AudioRxPath {
                     playDecodedAudio();
                 }
                 cleanup();
+                Log.i(TAG, "Audio Rx thread stopped");
             }// end of run()
         });
     }

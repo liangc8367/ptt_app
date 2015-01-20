@@ -92,34 +92,35 @@ public class MainActivity extends ActionBarActivity {
     private class UdpHandler implements UDPService.CompletionHandler {
         @Override
         public void completed(DatagramPacket packet) {
-            if( mAudioRxPath == null ){
-                mAudioRxPath = new AudioRxPath();
-            }
-            mAudioRxPath.offerAudioData(ByteBuffer.wrap(packet.getData(), 0, packet.getLength()), (short)0);
-//            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-//            switch (protoType) {
-//                case ProtocolBase.PTYPE_CALL_INIT:
-//                    if (mAudioRxPath == null) {
-//                        mAudioRxPath = new AudioRxPath();
-//                    }
-//                    break;
-//                case ProtocolBase.PTYPE_CALL_TERM:
-//                    if (mAudioRxPath != null) {
-//                        mAudioRxPath.stop();
-//                        mAudioRxPath = null;
-//                    }
-//                    break;
-//                case ProtocolBase.PTYPE_CALL_DATA:
-//                    if (mAudioRxPath != null) {
-//                        CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
-//                        ByteBuffer audioPayload = callData.getAudioData();
-//                        short seq = callData.getAudioSeq();
-//                        mAudioRxPath.offerAudioData(audioPayload, seq);
-//                    }
-//                    break;
-//                default:
-//                    break;
+//            if( mAudioRxPath == null ){
+//                mAudioRxPath = new AudioRxPath();
 //            }
+//            mAudioRxPath.offerAudioData(ByteBuffer.wrap(packet.getData(), 0, packet.getLength()), (short)0);
+
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            switch (protoType) {
+                case ProtocolBase.PTYPE_CALL_INIT:
+                    if (mAudioRxPath == null) {
+                        mAudioRxPath = new AudioRxPath();
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    if (mAudioRxPath != null) {
+                        mAudioRxPath.stop();
+                        mAudioRxPath = null;
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_DATA:
+                    if (mAudioRxPath != null) {
+                        CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
+                        ByteBuffer audioPayload = callData.getAudioData();
+                        short seq = callData.getAudioSeq();
+                        mAudioRxPath.offerAudioData(audioPayload, seq);
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
