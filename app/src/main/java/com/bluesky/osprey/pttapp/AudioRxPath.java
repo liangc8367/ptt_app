@@ -37,8 +37,10 @@ public class AudioRxPath {
 
     public AudioRxPath(){
 
+        Log.i(TAG, "creating AudioRxPath...");
         configureAudioRxPath();
         preloadTone();
+        Log.i(TAG, "completed creation.");
 
         mbAwaitFirst = true;
         mAudioThread = new Thread( new Runnable(){
@@ -49,15 +51,14 @@ public class AudioRxPath {
                 startDecoder();
                 mPlayCount = 0;
                 while(mRunning) {
-//                    ByteBuffer receivedAudio = pollJitterBuffer();
-//                    if (receivedAudio == null) {
-//                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
-//                                " packets!, stopping AudioRx");
-//                        break; //TODO: emit events
-//                    }
-//
-//                    decodeAudio(receivedAudio);
-                    decodeAudio(null);
+                    ByteBuffer receivedAudio = pollJitterBuffer();
+                    if (receivedAudio == null) {
+                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
+                                " packets!, stopping AudioRx");
+                        break; //TODO: emit events
+                    }
+
+                    decodeAudio(receivedAudio);
                     playDecodedAudio();
                 }
                 cleanup();
@@ -80,7 +81,7 @@ public class AudioRxPath {
      *
      */
     public boolean offerAudioData(ByteBuffer audio, short sequence){
-        boolean res = mInsideBuffer.offer(audio);
+        boolean res = mJitterBuffer.offer(audio, sequence);
         if(!mRunning){
             start();
         }
@@ -155,9 +156,9 @@ public class AudioRxPath {
     }
 
     private void preloadTone(){
-        ByteBuffer toneBuffer = generateTone();
-//        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
-        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
+//        ByteBuffer toneBuffer = generateTone();
+////        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
+//        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
     }
 
     private ByteBuffer generateTone(){
@@ -200,7 +201,7 @@ public class AudioRxPath {
      *
      */
     private void decodeAudio(ByteBuffer compressedAudio) {
-//        mInsideBuffer.offer(compressedAudio);
+        mInsideBuffer.offer(compressedAudio);
         ByteBuffer buf;
         while( (buf = mInsideBuffer.poll())!= null ) {
 

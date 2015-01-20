@@ -9,6 +9,10 @@ TODO list
 5) impl group call at Trunk manager side;
 6) other signaling, as call reject, call hang, call competition?
 
+KNOWN ISSUES:
+-------------
+- AudioRxThread, start again would emit exception?
+
 Done list
 ---------
 1) graceful release resources after user clicked stop service; (done)
