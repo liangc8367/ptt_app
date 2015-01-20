@@ -1,11 +1,16 @@
 TODO list
 ---------
-2) launch PTT from SU side;
-3) impl a simulation SU at desktop side, and let it act as echoer;
 4) impl receiving;
+    - tone generator
+    - tone generator (use hardcoded tone?)
+    - jitter buffer
+    - noise packet
+
 5) impl group call at Trunk manager side;
 6) other signaling, as call reject, call hang, call competition?
 
 Done list
 ---------
 1) graceful release resources after user clicked stop service; (done)
+2) launch PTT from SU side;
+3) impl a simulation SU at desktop side, and let it act as echoer;
