@@ -46,16 +46,15 @@ public class AudioRxPath {
 
                 Log.i(TAG, "Audio Rx thread started");
                 while(mRunning) {
-//                    if( false ) {
-//                        ByteBuffer receivedAudio = pollJitterBuffer();
-//                        if (receivedAudio == null) {
-//                            Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
-//                                    " packets!, stopping AudioRx");
-//                            break; //TODO: emit events
-//                        }
-//
-//                        decodeAudio(receivedAudio);
+//                    ByteBuffer receivedAudio = pollJitterBuffer();
+//                    if (receivedAudio == null) {
+//                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
+//                                " packets!, stopping AudioRx");
+//                        break; //TODO: emit events
 //                    }
+//
+//                    decodeAudio(receivedAudio);
+                    decodeAudio(null);
                     playDecodedAudio();
                 }
                 cleanup();
@@ -80,7 +79,8 @@ public class AudioRxPath {
      *
      */
     public boolean offerAudioData(ByteBuffer audio, short sequence){
-        boolean res =  mJitterBuffer.offer(audio, sequence);
+        boolean res = mInsideBuffer.offer(audio);
+//        boolean res =  mJitterBuffer.offer(audio, sequence);
 //        if( mbAwaitFirst){
 //            start();
 //        }
@@ -190,22 +190,28 @@ public class AudioRxPath {
      *
      */
     private void decodeAudio(ByteBuffer compressedAudio) {
-        mInsideBuffer.offer(compressedAudio);
+//        mInsideBuffer.offer(compressedAudio);
         ByteBuffer buf;
         while( (buf = mInsideBuffer.poll())!= null ) {
-            Log.i(TAG, "decomp[" + (++mDecompCount) + "]:"
+            Log.i(TAG, "decomp[" + (++mDecompCount) + "]: sz="
+                    + buf.remaining() + ":"
                 + buf.getShort(2) + ":"
-                + buf.getShort(3));
+                + buf.getShort(3) + "===> " + buf.get(4) + ":" + buf.get(5));
 
             int index = mDecoder.dequeueInputBuffer(0);
             if( index >= 0) {
                 mDecoderInputBuffers[index].clear();
                 mDecoderInputBuffers[index].put(buf);
 
+                Log.i(TAG, "--" + mDecoderInputBuffers[index].getShort(2)
+                        + ":" + mDecoderInputBuffers[index].getShort(3)
+                        + "====> " + mDecoderInputBuffers[index].get(4)
+                        + ":" + mDecoderInputBuffers[index].get(5));
+
                 mDecoder.queueInputBuffer(
                         index,
                         0, // offset
-                        mDecoderInputBuffers[index].remaining(),
+                        mDecoderInputBuffers[index].position(), // meaningful size
                         0, // presenttion timeUS
                         0  // flags);
                 );
