@@ -72,7 +72,10 @@ public class MainActivity extends ActionBarActivity {
 //        mUdpService.startService();
         mDecoderTest = new AudioDecoderTest(this);
         mDecoderTest.start();
-        Toast.makeText(this, "receiving compressed audio...", Toast.LENGTH_SHORT).show();
+        String path = "path:" + getExternalFilesDir(null);
+        Toast.makeText(this, path, Toast.LENGTH_LONG).show();
+
+//        Toast.makeText(this, "receiving compressed audio...", Toast.LENGTH_SHORT).show();
 
     }
 
