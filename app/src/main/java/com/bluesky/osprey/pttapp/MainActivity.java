@@ -59,17 +59,19 @@ public class MainActivity extends ActionBarActivity {
 
 
         // create udp service
-        UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
-        //TODO: read configuration from database
-
-        udpSvcConfig.addrServer = new InetSocketAddress(
-                GlobalConstants.TRUNK_CENTER_ADDR,
-                GlobalConstants.TRUNK_CENTER_PORT);
-        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
-        mUdpService = new UDPService(udpSvcConfig);
-        mUdpHandler = new UdpHandler();
-        mUdpService.setCompletionHandler(mUdpHandler);
-        mUdpService.startService();
+//        UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
+//        //TODO: read configuration from database
+//
+//        udpSvcConfig.addrServer = new InetSocketAddress(
+//                GlobalConstants.TRUNK_CENTER_ADDR,
+//                GlobalConstants.TRUNK_CENTER_PORT);
+//        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.LOCAL_PORT);
+//        mUdpService = new UDPService(udpSvcConfig);
+//        mUdpHandler = new UdpHandler();
+//        mUdpService.setCompletionHandler(mUdpHandler);
+//        mUdpService.startService();
+        mDecoderTest = new AudioDecoderTest(this);
+        mDecoderTest.start();
         Toast.makeText(this, "receiving compressed audio...", Toast.LENGTH_SHORT).show();
 
     }
@@ -80,11 +82,17 @@ public class MainActivity extends ActionBarActivity {
 //        stopService(intent);
 
 
-        if (mUdpService != null) {
+//        if (mUdpService != null) {
+//
+//            mUdpService.stopService();
+//            mAudioRxPath.stop();
+//            mUdpService = null;
+//            Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
+//        }
 
-            mUdpService.stopService();
-            mAudioRxPath.stop();
-            mUdpService = null;
+        if( mDecoderTest != null ){
+            mDecoderTest.stop();
+            mDecoderTest = null;
             Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
         }
     }
@@ -129,4 +137,5 @@ public class MainActivity extends ActionBarActivity {
     AudioRxPath mAudioRxPath;
     UdpHandler  mUdpHandler;
 
+    AudioDecoderTest mDecoderTest;
 }
