@@ -57,13 +57,22 @@ public class AudioDecoderTest {
                 while(mRunning) {
                     ByteBuffer receivedAudio = loadInput();// = pollJitterBuffer();
                     if (receivedAudio == null) {
-                        Log.i(TAG, "jitter buffer empty for " + GlobalConstants.JITTER_DEPTH +
-                                " packets!, stopping AudioRx");
-                        break; //TODO: emit events
+                        // end of input
+                        markInputEOF();
+                        while(playDecodedAudio()){
+                            try {
+                                Thread.sleep(20);
+                            } catch (InterruptedException e){
+
+                            }
+                        }
+                        break;
                     }
 
                     decodeAudio(receivedAudio);
-                    playDecodedAudio();
+                    if(!playDecodedAudio()){
+                        break;
+                    };
                 }
                 cleanup();
                 Log.i(TAG, "Audio Rx thread stopped");
@@ -236,12 +245,30 @@ public class AudioDecoderTest {
         }
     }
 
+    private void markInputEOF(){
+        while(true){
+            int index = mDecoder.dequeueInputBuffer(0);
+            if( index >= 0){
+                mDecoderInputBuffers[index].clear();
+                mDecoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                break;
+            }
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e){
+
+            }
+        }
+    }
+
     /** keep writing decoded audio to Audio track, until no more decoded audio
      *
+     * @return true if not eof
      */
-    private void playDecodedAudio() {
+    private boolean playDecodedAudio() {
         int index;
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+        boolean eof = false;
 
         while((index = mDecoder.dequeueOutputBuffer(info, 0)) != MediaCodec.INFO_TRY_AGAIN_LATER ) {
 
@@ -269,7 +296,15 @@ public class AudioDecoderTest {
 //                mAudioTrack.play();
 //            }
             writeOutput(mRawAudioData, 0, info.size);
+
+            if( info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM){
+                Log.i(TAG, "end of decoded stream");
+                eof = true;
+                break;
+            }
         }
+
+        return !eof;
     }
 
     private void openIOStreams(){
