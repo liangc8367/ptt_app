@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.LinkedList;
 
 /**
@@ -37,8 +38,9 @@ public class AudioDecoderTest {
         static final int AUDIO_AMR_BITRATE = 7400; // 7.4Kbps
     }
 
-    public AudioDecoderTest(Context context){
+    public AudioDecoderTest(Context context, boolean stolen){
         mContext = context;
+        mStolen = stolen;
 
         Log.i(TAG, "creating AudioRxPath...");
         configureAudioRxPath();
@@ -52,6 +54,9 @@ public class AudioDecoderTest {
 
                 Log.i(TAG, "Audio Rx thread started");
                 openIOStreams();
+
+                writeTone(generateTone());
+
                 startDecoder();
                 mPlayCount = 0;
                 while(mRunning) {
@@ -181,8 +186,14 @@ public class AudioDecoderTest {
 //        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
     }
 
+    private void writeTone(ByteBuffer tone){
+
+        writeOutput(tone.array(), tone.arrayOffset(), tone.position());
+    }
+
     private ByteBuffer generateTone(){
         ByteBuffer tone = ByteBuffer.allocate(AudioTrackConfiguration.AUDIO_TONE_SIZE);
+        tone.order(ByteOrder.LITTLE_ENDIAN); //<== little endian
         int toneSamples = AudioTrackConfiguration.AUDIO_TONE_SIZE / 2;
         final double frequency = 950.0;
         for( int i = 0; i< toneSamples; ++i){
@@ -309,7 +320,14 @@ public class AudioDecoderTest {
 
     private void openIOStreams(){
         File ifile = new File(mContext.getExternalFilesDir(null), "audio.amr-nb");
-        File ofile = new File(mContext.getExternalFilesDir(null), "audio.raw");
+
+        String ofileName;
+        if( mStolen ){
+            ofileName = "audio-stolen8-tone.raw";
+        } else {
+            ofileName = "audio.raw";
+        }
+        File ofile = new File(mContext.getExternalFilesDir(null), ofileName);
         try {
             mIs = new FileInputStream(ifile);
             mOs = new FileOutputStream(ofile);
@@ -327,6 +345,7 @@ public class AudioDecoderTest {
         int sz;
         try{
             sz = mIs.read(buffer, 0, COMPRESSED_20MS_AUDIO_SIZE);
+            ++mReadCount;
         } catch (Exception e){
             Log.w(TAG, "error in reading " + e);
             return null;
@@ -338,7 +357,14 @@ public class AudioDecoderTest {
             return null;
         }
 
-        ByteBuffer buf = ByteBuffer.wrap(buffer);
+        ByteBuffer buf;
+        if( (mReadCount % 8) == 0 ){
+            // generate NO_DATA frame in every eight frames
+            buffer[0] = (1<<2) | (15 << 3);
+            buf = ByteBuffer.wrap(buffer, 0, 1);
+        } else {
+            buf = ByteBuffer.wrap(buffer);
+        }
         return buf;
     }
 
@@ -367,6 +393,9 @@ public class AudioDecoderTest {
 
     private int mPlayCount = 0;
     private int mLostCount = 0;
+
+    private int mReadCount = 0;
+    private boolean mStolen = false;
 
     private int mConsecutiveLostCount = 0;
     boolean mbAwaitFirst;

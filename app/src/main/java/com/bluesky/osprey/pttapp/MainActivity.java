@@ -70,7 +70,7 @@ public class MainActivity extends ActionBarActivity {
 //        mUdpHandler = new UdpHandler();
 //        mUdpService.setCompletionHandler(mUdpHandler);
 //        mUdpService.startService();
-        mDecoderTest = new AudioDecoderTest(this);
+        mDecoderTest = new AudioDecoderTest(this, true);
         mDecoderTest.start();
         String path = "path:" + getExternalFilesDir(null);
         Toast.makeText(this, path, Toast.LENGTH_LONG).show();
