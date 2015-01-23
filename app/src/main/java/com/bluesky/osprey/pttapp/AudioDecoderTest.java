@@ -55,7 +55,7 @@ public class AudioDecoderTest {
                 Log.i(TAG, "Audio Rx thread started");
                 openIOStreams();
 
-                writeTone(generateTone());
+//                writeTone(generateTone());
 
                 startDecoder();
                 mPlayCount = 0;
@@ -172,7 +172,7 @@ public class AudioDecoderTest {
 
         try {
             mIs.close();
-            mOs.close();
+//            mOs.close();
         } catch (Exception e){
             Log.w(TAG, "exception in closing:" +e);
         }
@@ -300,17 +300,38 @@ public class AudioDecoderTest {
             mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size);
             mDecoder.releaseOutputBuffer(index, false /* render */);
 
-//            mAudioTrack.write(mRawAudioData, 0, info.size);
+            mAudioTrack.write(mRawAudioData, 0, info.size);
 
             ++mPlayCount;
-//            if (mPlayCount == 2) {
-//                mAudioTrack.play();
-//            }
-            writeOutput(mRawAudioData, 0, info.size);
+
+            if(info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM ){
+                Log.w(TAG, "end of decoded stream: playback head ="
+                        + mAudioTrack.getPlaybackHeadPosition()
+                        + ", native sample rate=" + mAudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_VOICE_CALL)
+                        + ", current playcount=" + (mPlayCount - 1));
+
+            }
+
+            if (mPlayCount == 2) {
+                mAudioTrack.play();
+            }
+//            writeOutput(mRawAudioData, 0, info.size);
 
             if( info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM){
                 Log.i(TAG, "end of decoded stream");
                 eof = true;
+
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e){
+
+                }
+
+                Log.w(TAG, "after 2s: playback head ="
+                        + mAudioTrack.getPlaybackHeadPosition()
+                        + ", native sample rate=" + mAudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_VOICE_CALL)
+                        + ", current playcount=" + (mPlayCount - 1));
+
                 break;
             }
         }
@@ -321,16 +342,16 @@ public class AudioDecoderTest {
     private void openIOStreams(){
         File ifile = new File(mContext.getExternalFilesDir(null), "audio.amr-nb");
 
-        String ofileName;
-        if( mStolen ){
-            ofileName = "audio-stolen8-tone.raw";
-        } else {
-            ofileName = "audio.raw";
-        }
-        File ofile = new File(mContext.getExternalFilesDir(null), ofileName);
+//        String ofileName;
+//        if( mStolen ){
+//            ofileName = "audio-stolen8-tone.raw";
+//        } else {
+//            ofileName = "audio.raw";
+//        }
+//        File ofile = new File(mContext.getExternalFilesDir(null), ofileName);
         try {
             mIs = new FileInputStream(ifile);
-            mOs = new FileOutputStream(ofile);
+//            mOs = new FileOutputStream(ofile);
 
             mIs.skip(AMR_FILE_HEADER_SINGLE_CHANNEL.length());
 
@@ -358,7 +379,8 @@ public class AudioDecoderTest {
         }
 
         ByteBuffer buf;
-        if( (mReadCount % 8) == 0 ){
+//        if( (mReadCount % 8) == 0 ){
+        if(false){ // no stolen frame
             // generate NO_DATA frame in every eight frames
             buffer[0] = (1<<2) | (15 << 3);
             buf = ByteBuffer.wrap(buffer, 0, 1);
