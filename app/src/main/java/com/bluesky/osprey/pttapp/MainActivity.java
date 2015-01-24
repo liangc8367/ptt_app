@@ -1,5 +1,6 @@
 package com.bluesky.osprey.pttapp;
 
+import android.media.AudioManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
+import android.content.Context;
 
 import com.bluesky.protocol.CallData;
 import com.bluesky.protocol.ProtocolBase;
@@ -23,6 +25,8 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
     }
 
 
@@ -70,6 +74,9 @@ public class MainActivity extends ActionBarActivity {
 //        mUdpHandler = new UdpHandler();
 //        mUdpService.setCompletionHandler(mUdpHandler);
 //        mUdpService.startService();
+
+//        mAudioManager.setSpeakerphoneOn(true);
+
         mDecoderTest = new AudioDecoderTest(this, true);
         mDecoderTest.start();
         String path = "path:" + getExternalFilesDir(null);
@@ -92,6 +99,8 @@ public class MainActivity extends ActionBarActivity {
 //            mUdpService = null;
 //            Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
 //        }
+
+//        mAudioManager.setSpeakerphoneOn(false);
 
         if( mDecoderTest != null ){
             mDecoderTest.stop();
@@ -141,4 +150,5 @@ public class MainActivity extends ActionBarActivity {
     UdpHandler  mUdpHandler;
 
     AudioDecoderTest mDecoderTest;
+    AudioManager mAudioManager;
 }

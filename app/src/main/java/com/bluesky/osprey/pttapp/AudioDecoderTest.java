@@ -136,7 +136,7 @@ public class AudioDecoderTest {
                     AudioFormat.ENCODING_PCM_16BIT);
 
             mAudioTrack = new AudioTrack(
-                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.STREAM_MUSIC, //STREAM_VOICE_CALL,
                     AudioTrackConfiguration.AUDIO_SAMPLE_RATE,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT,
@@ -159,9 +159,11 @@ public class AudioDecoderTest {
     }
 
     private void cleanup(){
-        mAudioTrack.stop();
-        mAudioTrack.release();
-        mAudioTrack = null;
+
+        //liangc, let's see what might happen if not stop
+//        mAudioTrack.stop();
+//        mAudioTrack.release();
+//        mAudioTrack = null;
 
         mDecoder.stop();
         mDecoder.release();
@@ -303,6 +305,11 @@ public class AudioDecoderTest {
             mAudioTrack.write(mRawAudioData, 0, info.size);
 
             ++mPlayCount;
+
+            if(mPlayCount == 143){
+                // force end at high volume place
+                info.flags = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
+            }
 
             if(info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM ){
                 Log.w(TAG, "end of decoded stream: playback head ="
