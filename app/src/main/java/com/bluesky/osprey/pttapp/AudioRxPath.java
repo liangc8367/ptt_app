@@ -106,13 +106,14 @@ public class AudioRxPath {
         try {
             switch (mState) {
                 case INITIALIZED:
+                    int sz = audio.limit();
                     res = mJitterBuffer.offer(audio, sequence);
-                    Log.d(TAG, "offer, seq=" + sequence + ", res= " + res);
+                    Log.d(TAG, "offer, seq=" + sequence + ", sz=" + sz + ", res= " + res);
                     mAwaitFirst.signal();
                     break;
                 case PLAYING:
                     res = mJitterBuffer.offer(audio, sequence);
-                    Log.d(TAG, "offer, seq=" + sequence + ", res= " + res);
+                    Log.d(TAG, "offer, seq=" + sequence + ", sz=" + sz + ", res= " + res);
                     break;
                 default:
                     // discard
@@ -265,8 +266,10 @@ public class AudioRxPath {
     private ByteBuffer pollJitterBuffer() {
         ByteBuffer compressedAudio = mJitterBuffer.poll();
         long deqSeq = mJitterBuffer.getDequeueSequence() -1;
-        boolean res = compressedAudio==null;
+        int sz = compressedAudio.limit();
+        boolean res = compressedAudio!=null;
         Log.d(TAG, "poll, seq=" + deqSeq
+                + ", sz=" + sz
                 + ", res= " + res);
 
         if( compressedAudio == null ){
