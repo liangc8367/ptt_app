@@ -195,10 +195,11 @@ public class PTTSignaling extends Handler{
     }
 
     /** send call terminator */
-    private void sendCallTerminator(){
+    private void sendCallTerminator( short audioSeq){
         CallTerm callTerm = new CallTerm(
                 GlobalConstants.TGT_ID,
-                GlobalConstants.SUB_ID
+                GlobalConstants.SUB_ID,
+                audioSeq
                 );
         callTerm.setSequence(++mSeqNumber);
         ByteBuffer payload = ByteBuffer.allocate(callTerm.getSize());
@@ -422,6 +423,10 @@ public class PTTSignaling extends Handler{
                     CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
                     mAudioRxPath.offerAudioData(callData.getAudioData(), callData.getAudioSeq());
 
+                } else if (mbSwitching && (protoType == ProtocolBase.PTYPE_CALL_TERM)) {
+                    CallTerm callTerm = (CallTerm) ProtocolFactory.getProtocol(packet);
+                    ByteBuffer eof = ByteBuffer.allocate(0);
+                    mAudioRxPath.offerAudioData(eof, callTerm.getAudioSeq());
                 } else {
                     // for the rest, sent to signaling
                     super.completed(packet);
@@ -454,7 +459,7 @@ public class PTTSignaling extends Handler{
                     if(mCallTermCount <= GlobalConstants.CALL_TERMINATOR_NUMBER ){
                         long delay;
                         if( mCallTermCount < GlobalConstants.CALL_TERMINATOR_NUMBER) {
-                            sendCallTerminator();
+                            sendCallTerminator(++mAudioTxSequence);
                             delay = GlobalConstants.CALL_PACKET_INTERVAL;
                         } else {
                             delay = GlobalConstants.CALL_HANG_PERIOD;
@@ -487,7 +492,7 @@ public class PTTSignaling extends Handler{
             Log.i(TAG, "Call hang");
 
             // send first call term
-            sendCallTerminator();
+            sendCallTerminator(++mAudioTxSequence);
             ++mCallTermCount;
 
             mTimerTask = creatTimerTask();
@@ -625,8 +630,8 @@ public class PTTSignaling extends Handler{
 
 
         AudioTxPath     mAudioTxPath;
-        short           mAudioTxSequence;
     }
 
+    short           mAudioTxSequence;
 
 }
