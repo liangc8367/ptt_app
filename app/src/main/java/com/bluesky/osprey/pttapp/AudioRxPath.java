@@ -144,7 +144,7 @@ public class AudioRxPath {
                     AudioFormat.ENCODING_PCM_16BIT);
 
             mAudioTrack = new AudioTrack(
-                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.STREAM_MUSIC,
                     AudioTrackConfiguration.AUDIO_SAMPLE_RATE,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT,
