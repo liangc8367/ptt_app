@@ -112,6 +112,7 @@ public class AudioRxPath {
                     mAwaitFirst.signal();
                     break;
                 case PLAYING:
+                    sz = audio.limit();
                     res = mJitterBuffer.offer(audio, sequence);
                     Log.d(TAG, "offer, seq=" + sequence + ", sz=" + sz + ", res= " + res);
                     break;
