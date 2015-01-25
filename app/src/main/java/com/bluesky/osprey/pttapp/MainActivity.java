@@ -26,7 +26,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+//        mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
     }
 
 
@@ -53,13 +53,12 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void onStartPTTService(View view) {
-//        //XXX
-//        Intent intent = new Intent(this, PTTAppService.class);
-//        startService(intent);
+        Intent intent = new Intent(this, PTTAppService.class);
+        startService(intent);
 
-//        // start Call Activity
-//        intent = new Intent(this, CallActivity.class);
-//        startActivity(intent);
+        // start Call Activity
+        intent = new Intent(this, CallActivity.class);
+        startActivity(intent);
 
 
         // create udp service
@@ -77,19 +76,18 @@ public class MainActivity extends ActionBarActivity {
 
 //        mAudioManager.setSpeakerphoneOn(true);
 
-        mDecoderTest = new AudioDecoderTest(this, true);
-        mDecoderTest.start();
-        String path = "path:" + getExternalFilesDir(null);
-        Toast.makeText(this, path, Toast.LENGTH_LONG).show();
+//        mDecoderTest = new AudioDecoderTest(this, true);
+//        mDecoderTest.start();
+//        String path = "path:" + getExternalFilesDir(null);
+//        Toast.makeText(this, path, Toast.LENGTH_LONG).show();
 
 //        Toast.makeText(this, "receiving compressed audio...", Toast.LENGTH_SHORT).show();
 
     }
 
     public void onStopService(View view){
-        //XXX
-//        Intent intent = new Intent(this, PTTAppService.class);
-//        stopService(intent);
+        Intent intent = new Intent(this, PTTAppService.class);
+        stopService(intent);
 
 
 //        if (mUdpService != null) {
@@ -102,53 +100,53 @@ public class MainActivity extends ActionBarActivity {
 
 //        mAudioManager.setSpeakerphoneOn(false);
 
-        if( mDecoderTest != null ){
-            mDecoderTest.stop();
-            mDecoderTest = null;
-            Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
-        }
+//        if( mDecoderTest != null ){
+//            mDecoderTest.stop();
+//            mDecoderTest = null;
+//            Toast.makeText(this, "stopped receiving compressed audio...", Toast.LENGTH_SHORT).show();
+//        }
     }
 
-    private class UdpHandler implements UDPService.CompletionHandler {
-        @Override
-        public void completed(DatagramPacket packet) {
-//            if( mAudioRxPath == null ){
-//                mAudioRxPath = new AudioRxPath();
+//    private class UdpHandler implements UDPService.CompletionHandler {
+//        @Override
+//        public void completed(DatagramPacket packet) {
+////            if( mAudioRxPath == null ){
+////                mAudioRxPath = new AudioRxPath();
+////            }
+////            mAudioRxPath.offerAudioData(ByteBuffer.wrap(packet.getData(), 0, packet.getLength()), (short)0);
+//
+//            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+//            switch (protoType) {
+//                case ProtocolBase.PTYPE_CALL_INIT:
+//                    if (mAudioRxPath == null) {
+//                        mAudioRxPath = new AudioRxPath();
+//                    }
+//                    break;
+//                case ProtocolBase.PTYPE_CALL_TERM:
+//                    if (mAudioRxPath != null) {
+//                        mAudioRxPath.stop();
+//                        mAudioRxPath = null;
+//                    }
+//                    break;
+//                case ProtocolBase.PTYPE_CALL_DATA:
+//                    if (mAudioRxPath != null) {
+//                        CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
+//                        ByteBuffer audioPayload = callData.getAudioData();
+//                        short seq = callData.getAudioSeq();
+//                        mAudioRxPath.offerAudioData(audioPayload, seq);
+//                    }
+//                    break;
+//                default:
+//                    break;
 //            }
-//            mAudioRxPath.offerAudioData(ByteBuffer.wrap(packet.getData(), 0, packet.getLength()), (short)0);
-
-            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-            switch (protoType) {
-                case ProtocolBase.PTYPE_CALL_INIT:
-                    if (mAudioRxPath == null) {
-                        mAudioRxPath = new AudioRxPath();
-                    }
-                    break;
-                case ProtocolBase.PTYPE_CALL_TERM:
-                    if (mAudioRxPath != null) {
-                        mAudioRxPath.stop();
-                        mAudioRxPath = null;
-                    }
-                    break;
-                case ProtocolBase.PTYPE_CALL_DATA:
-                    if (mAudioRxPath != null) {
-                        CallData callData = (CallData) ProtocolFactory.getProtocol(packet);
-                        ByteBuffer audioPayload = callData.getAudioData();
-                        short seq = callData.getAudioSeq();
-                        mAudioRxPath.offerAudioData(audioPayload, seq);
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
-    /** private members */
-    UDPService  mUdpService;
-    AudioRxPath mAudioRxPath;
-    UdpHandler  mUdpHandler;
-
-    AudioDecoderTest mDecoderTest;
-    AudioManager mAudioManager;
+//        }
+//    }
+//
+//    /** private members */
+//    UDPService  mUdpService;
+//    AudioRxPath mAudioRxPath;
+//    UdpHandler  mUdpHandler;
+//
+//    AudioDecoderTest mDecoderTest;
+//    AudioManager mAudioManager;
 }
