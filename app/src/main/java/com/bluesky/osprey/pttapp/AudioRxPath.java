@@ -67,8 +67,8 @@ public class AudioRxPath {
                 configureAudioRxPath();
 
                 while ( !Thread.currentThread().isInterrupted()) {
-                    waitFirstAudio();
                     startDecoder();
+                    waitFirstAudio();
                     playing();
                     ending();
                     reset();
@@ -209,7 +209,7 @@ public class AudioRxPath {
         while(true){
             ByteBuffer receivedAudio = pollJitterBuffer();
 
-            if( receivedAudio.position() == 0){
+            if( receivedAudio.limit() == 0){
                 // end of stream
                 break;
             }
@@ -232,9 +232,10 @@ public class AudioRxPath {
     }
 
     private void preloadTone(){
-        ByteBuffer toneBuffer = generateTone();
-//        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
-        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
+        //TODO:
+//        ByteBuffer toneBuffer = generateTone();
+////        mAudioTrack.write(toneBuffer, toneBuffer.remaining(), AudioTrack.WRITE_NON_BLOCKING);
+//        mAudioTrack.write(toneBuffer.array(), toneBuffer.arrayOffset(), toneBuffer.position());
     }
 
     private ByteBuffer generateTone(){
@@ -297,15 +298,16 @@ public class AudioRxPath {
 
             int index = mDecoder.dequeueInputBuffer(wait);
             if( index >= 0) {
-                mDecoderInputBuffers[index].clear();
-                mDecoderInputBuffers[index].put(buf);
-                int flags = 0;
 
-                if(buf.position() == 0){
+                int flags = 0;
+                if(buf.limit() == 0){
                     Log.i(TAG, "decode input got EOF");
                     flags = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
                     res = false;
                 }
+
+                mDecoderInputBuffers[index].clear();
+                mDecoderInputBuffers[index].put(buf);
 
                 mDecoder.queueInputBuffer(
                         index,
