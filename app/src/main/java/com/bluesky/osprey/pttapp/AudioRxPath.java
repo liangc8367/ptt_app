@@ -4,7 +4,6 @@ import com.bluesky.JitterBuffer;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -42,7 +41,7 @@ import android.util.Log;
 public class AudioRxPath {
     public class AudioTrackConfiguration{
         static final int AUDIO_SAMPLE_RATE = 8000; // 8KHz
-        static final int BUFFER_SIZE_MULTIPLIER = 10;
+        static final int BUFFER_SIZE_MULTIPLIER = 4;
         static final int AUDIO_PCM20MS_SAMPLES =
                 (AUDIO_SAMPLE_RATE * GlobalConstants.CALL_PACKET_INTERVAL /1000);
         static final int AUDIO_PCM20MS_SIZE = AUDIO_PCM20MS_SAMPLES * 2;
@@ -64,7 +63,7 @@ public class AudioRxPath {
             public void run(){
 
                 Log.i(TAG, "Audio Rx thread started");
-                configureAudioRxPath();
+                createAudioRxComponents();
 
                 while ( !Thread.currentThread().isInterrupted()) {
                     startDecoder();
@@ -128,7 +127,7 @@ public class AudioRxPath {
 
     /** private methods  and members */
 
-    private boolean configureAudioRxPath(){
+    private boolean createAudioRxComponents(){
         try {
             mDecoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AMR_NB);
 
@@ -146,6 +145,7 @@ public class AudioRxPath {
                     AudioTrackConfiguration.AUDIO_SAMPLE_RATE,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT);
+            Log.i(TAG, "min buffer size = " + minBufferSize);
 
             mAudioTrack = new AudioTrack(
                     AudioManager.STREAM_MUSIC,
@@ -207,28 +207,30 @@ public class AudioRxPath {
         }
     }
 
+    /** keep polling jitter buffer, and playing audio,
+     * until EOF (zero-len buffer), or interrupt
+     *
+     */
     private void playing() {
         preloadTone(); // load 40ms start tone
 
         while(true){
             ByteBuffer receivedAudio = pollJitterBuffer();
+            assert(receivedAudio != null);
+            mInsideBuffer.offer(receivedAudio);
 
             if( receivedAudio.limit() == 0){
-                // end of stream
-                break;
+                break; // EOF
             }
 
-            decodeAudio(receivedAudio);
-
+            decodeAudio(0);
             playDecodedAudio();
         }
     }
 
     private void ending(){
         mState = State.ENDING;
-        ByteBuffer eofBuf = ByteBuffer.allocate(0);
-        decodeAudio(eofBuf);
-        while( decodeAudio(null)){
+        while( decodeAudio(DRAIN_WAIT)){
             playDecodedAudio();
         }
         drainDecodedAudio();
@@ -262,13 +264,21 @@ public class AudioRxPath {
      *
      * if we have seen 6 consecutive lost packets, then we synthesize a zero-length packet
      *
-     * @return received or synthesized audio,
+     * @return received or synthesized audio
+     *
+     *   sythesized audio:
+     *      NO_DATA if packet loss less than 6
+     *      EOF: zero-len buffer, for 6 consecutive loss
      */
     private ByteBuffer pollJitterBuffer() {
         ByteBuffer compressedAudio = mJitterBuffer.poll();
         long deqSeq = mJitterBuffer.getDequeueSequence() -1;
-        int sz = compressedAudio.limit();
-        boolean res = compressedAudio!=null;
+        int sz = 0;
+        boolean res = false;
+        if( compressedAudio != null ) {
+            sz = compressedAudio.limit();
+            res = true;
+        }
         Log.d(TAG, "poll, seq=" + deqSeq
                 + ", sz=" + sz
                 + ", res= " + res);
@@ -290,55 +300,53 @@ public class AudioRxPath {
     }
 
     /** keep decode audio if we can get a decoder input buffer, otherwise we park it aside
-     *  @param  compressedAudio compressed audio. If it's null, then we just need to drain
-     *                          internal buffer
+     *  @param  wait wait time
      *  @return true if there's still audio to be enqueued to decoder
      */
-    private boolean decodeAudio(ByteBuffer compressedAudio) {
+    private boolean decodeAudio(int wait) {
 
-        ByteBuffer buf;
         boolean res = true;
-        int wait = DRAIN_WAIT; // 10ms
 
-        if( compressedAudio != null ) {
-            mInsideBuffer.offer(compressedAudio);
-            wait = 0;
-        }
-
-        while( (buf = mInsideBuffer.poll())!= null ) {
+        while( mInsideBuffer.size() != 0 ) {
 
             int index = mDecoder.dequeueInputBuffer(wait);
-            if( index >= 0) {
 
-                int flags = 0;
-                if(buf.limit() == 0){
-                    Log.i(TAG, "decode input got EOF");
-                    flags = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
-                    res = false;
-                }
-
-                mDecoderInputBuffers[index].clear();
-                mDecoderInputBuffers[index].put(buf);
-
-                mDecoder.queueInputBuffer(
-                        index,
-                        0, // offset
-                        mDecoderInputBuffers[index].position(), // meaningful size
-                        0, // presenttion timeUS
-                        flags
-                );
-
-            } else {
+            if( index < 0 ){
                 Log.i(TAG, "empty decoder input buffer: " + index);
-                mInsideBuffer.addFirst(buf);
+                break;
+            }
+
+            ByteBuffer buf = mInsideBuffer.poll();
+            assert(buf!=null);
+
+            int flags = 0;
+            if(buf.limit() == 0){
+                Log.i(TAG, "decode input got EOF");
+                flags = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
                 res = false;
             }
+
+            mDecoderInputBuffers[index].clear();
+            mDecoderInputBuffers[index].put(buf);
+
+            mDecoder.queueInputBuffer(
+                    index,
+                    0, // offset
+                    mDecoderInputBuffers[index].position(), // meaningful size
+                    0, // presenttion timeUS
+                    flags
+            );
+
+            if( !res){
+                break; // break if we've enqueued EOF to decoder
+            }
+
         }
         return res;
     }
 
     /** keep writing decoded audio to Audio track, until no more decoded audio
-     *
+     *  called before EOF
      */
     private void playDecodedAudio() {
         int index;
@@ -372,7 +380,7 @@ public class AudioRxPath {
         }
     }
 
-    /** drain decoder
+    /** drain decoder, called after EOF
      *
       */
     private void drainDecodedAudio(){
@@ -380,7 +388,7 @@ public class AudioRxPath {
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
         while(true){
-            index = mDecoder.dequeueOutputBuffer(info, -1); // wait infinite
+            index = mDecoder.dequeueOutputBuffer(info, -1); // wait infinite TODO: check deadloop
             if (index == MediaCodec.INFO_TRY_AGAIN_LATER ) {
                 continue; //TODO: timeout handling
             }
@@ -394,20 +402,19 @@ public class AudioRxPath {
                 continue;
             }
 
-            if( info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM ){
-                Log.w(TAG, "decoder egress EOF");
-                break;
-            }
-
             mDecoderOutputBuffers[index].position(info.offset);
             mDecoderOutputBuffers[index].limit(info.offset + info.size);
-
             //for API3, I have to use write(byte[]...), and thus have to do a copy.
             // if I use API21, then I can write decoder output buffer directly to audioTrack.
             mDecoderOutputBuffers[index].get(mRawAudioData, 0, info.size);
             mDecoder.releaseOutputBuffer(index, false /* render */);
 
             mAudioTrack.write(mRawAudioData, 0, info.size);
+
+            if( info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM ){
+                Log.w(TAG, "decoder egress EOF");
+                break;
+            }
 
             ++mPlayCount;
             if (mPlayCount == 2) {
@@ -424,6 +431,7 @@ public class AudioRxPath {
             int currentPos = mAudioTrack.getPlaybackHeadPosition();
             int totalSamples = mPlayCount * AudioTrackConfiguration.AUDIO_PCM20MS_SAMPLES;
             if( currentPos >= totalSamples ){
+                Log.w(TAG, "draining audio track done!");
                 break;
             }
             int wait = (totalSamples - currentPos) * 1000 / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;
@@ -450,13 +458,13 @@ public class AudioRxPath {
     private ByteBuffer[] mDecoderInputBuffers, mDecoderOutputBuffers;
     private AudioTrack mAudioTrack;
 
-    private byte[] mRawAudioData = new byte[1000]; //should be enough for AMR-NB one frame, for API3
+    //should be enough for AMR-NB one frame, for API3
+    private byte[] mRawAudioData = new byte[AudioTrackConfiguration.AUDIO_PCM20MS_SIZE];
 
     private int mPlayCount = 0;
     private int mLostCount = 0;
 
     private int mConsecutiveLostCount = 0;
-    boolean mbAwaitFirst;
 
 
     private static enum State {

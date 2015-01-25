@@ -50,20 +50,37 @@
             android:layout_gravity="center_horizontal">
 
             <Button
+                android:id="@+id/btnStopService"
                 android:layout_width="fill_parent"
                 android:layout_height="fill_parent"
                 android:text="@string/stop_service"
-                android:id="@+id/btnStopService"
+                android:onClick="onStopService"
                 android:layout_gravity="top|left|center_horizontal"
-                android:layout_weight="1"
-                android:onClick="onStopService" />
+                android:layout_weight="1" />
 
         </TableRow>
 
         <TableRow
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:layout_weight="1"></TableRow>
+            android:layout_weight="1">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start Test"
+                android:id="@+id/button"
+                android:onClick="onStartTest"
+                android:layout_weight="1" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Stop Test"
+                android:id="@+id/button2"
+                android:onClick="onStopTest"
+                android:layout_weight="1" />
+        </TableRow>
 
     </TableLayout>
 
