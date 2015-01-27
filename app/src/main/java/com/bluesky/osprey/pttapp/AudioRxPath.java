@@ -131,15 +131,7 @@ public class AudioRxPath {
         try {
             mDecoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AMR_NB);
 
-            MediaFormat format = new MediaFormat();
-            format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_AMR_NB);
-            format.setInteger(MediaFormat.KEY_SAMPLE_RATE,
-                    AudioDecoderConfiguration.AUDIO_SAMPLE_RATE);
-            format.setInteger(MediaFormat.KEY_BIT_RATE,
-                    AudioDecoderConfiguration.AUDIO_AMR_BITRATE);
-            format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
-
-            mDecoder.configure(format, null /* surface */, null /*crypto */, 0 /*flag */);
+            configureDecoder();
 
             int minBufferSize = AudioTrack.getMinBufferSize(
                     AudioTrackConfiguration.AUDIO_SAMPLE_RATE,
@@ -170,6 +162,18 @@ public class AudioRxPath {
         mDecoderOutputBuffers = mDecoder.getOutputBuffers();
     }
 
+    private void configureDecoder(){
+        MediaFormat format = new MediaFormat();
+        format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_AUDIO_AMR_NB);
+        format.setInteger(MediaFormat.KEY_SAMPLE_RATE,
+                AudioDecoderConfiguration.AUDIO_SAMPLE_RATE);
+        format.setInteger(MediaFormat.KEY_BIT_RATE,
+                AudioDecoderConfiguration.AUDIO_AMR_BITRATE);
+        format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
+
+        mDecoder.configure(format, null /* surface */, null /*crypto */, 0 /*flag */);
+    }
+
     private void cleanup(){
         mAudioTrack.stop();
         mAudioTrack.release();
@@ -184,14 +188,16 @@ public class AudioRxPath {
     }
 
     private void reset(){
+        mPlayCount = 0;
+
         mAudioTrack.stop();
         mAudioTrack.flush();
-
-        mDecoder.stop();
 
         mInsideBuffer.clear();
         mJitterBuffer.reset();
 
+        mDecoder.stop();
+        configureDecoder();
     }
 
     private void waitFirstAudio(){
@@ -430,8 +436,8 @@ public class AudioRxPath {
         while(true) {
             int currentPos = mAudioTrack.getPlaybackHeadPosition();
             int totalSamples = mPlayCount * AudioTrackConfiguration.AUDIO_PCM20MS_SAMPLES;
-            if( currentPos >= totalSamples ){
-                Log.w(TAG, "draining audio track done!");
+            if( currentPos == 0 || currentPos >= totalSamples ){
+                Log.w(TAG, "draining audio track done! current pos =" + currentPos);
                 break;
             }
             int wait = (totalSamples - currentPos) * 1000 / AudioTrackConfiguration.AUDIO_SAMPLE_RATE;

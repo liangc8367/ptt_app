@@ -4,7 +4,10 @@ TODO list
     - tone generator (ok, but a little noisy)
     - tone generator (use hardcoded tone?)
     - jitter buffer
-    - noise packet
+    - noise packet (done)
+    - memory leak?
+    - restart receiving (fixed)
+    - interrupt/abrupt stop?
 
 5) impl group call at Trunk manager side;
 6) other signaling, as call reject, call hang, call competition?

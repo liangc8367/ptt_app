@@ -30,6 +30,12 @@ public class MainActivity extends ActionBarActivity {
 //        mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
     }
 
+    @Override
+    protected void onStop() {
+        stopAudioRxPathTest();
+        super.onStop();
+    }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
