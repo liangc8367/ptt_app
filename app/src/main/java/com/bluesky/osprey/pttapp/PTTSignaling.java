@@ -233,6 +233,7 @@ public class PTTSignaling extends Handler{
     private final static int MSG_TIME_EXPIRED   = 2;
     private final static int MSG_PTT = 3;
     private final static int MSG_TXPATH_STOPPED = 4; // tx path stopped itself
+    private final static int MSG_RXPATH_STOPPED = 5;
     private final static int MSG_STOP           = 99;
 
 
@@ -370,7 +371,7 @@ public class PTTSignaling extends Handler{
         }
     }
 
-    private class StateCallReceiving extends StateNode {
+    private class StateCallReceiving extends StateNode implements AudioRxPath.Listener{
 
         @Override
         public State handleMessage(Message message) {
@@ -378,6 +379,11 @@ public class PTTSignaling extends Handler{
                 case MSG_RXED_PACKET:
                     DatagramPacket packet = (DatagramPacket) message.obj;
                     handleRxedPacket(packet);
+                    break;
+                case MSG_RXPATH_STOPPED:
+                    Log.i(TAG, "end of ingress call");
+                    mState = State.CALL_HANG;
+                    break;
                 default:
                     break;
             }
@@ -401,17 +407,22 @@ public class PTTSignaling extends Handler{
             mAudioRxPath = null;
         }
 
-        private void handleRxedPacket(DatagramPacket packet){
-            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-            if( protoType == ProtocolBase.PTYPE_CALL_TERM){
-                CallTerm callTerm =
-                        (CallTerm)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+        public void audioEnd(){
+            Message msg = Message.obtain(PTTSignaling.this, MSG_RXPATH_STOPPED);
+            msg.sendToTarget();
+        }
 
-                //TODO: validate call term
-                mState = State.CALL_HANG;
-                Log.i(TAG, "received call term, target = " + callTerm.getTargetId()
-                        + ", source = " + callTerm.getSuid());
-            }
+        private void handleRxedPacket(DatagramPacket packet){
+//            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+//            if( protoType == ProtocolBase.PTYPE_CALL_TERM){
+//                CallTerm callTerm =
+//                        (CallTerm)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+//
+//                //TODO: validate call term
+//                mState = State.CALL_HANG;
+//                Log.i(TAG, "received call term, target = " + callTerm.getTargetId()
+//                        + ", source = " + callTerm.getSuid());
+//            }
         }
 
         private class UdpRxSwitchHandler extends UdpRxHandler {

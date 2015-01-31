@@ -53,6 +53,10 @@ public class AudioRxPath {
         static final int AUDIO_AMR_BITRATE = 7400; // 7.4Kbps
     }
 
+    public interface Listener{
+        public void audioEnd();
+    }
+
     public AudioRxPath(){
 
         Log.i(TAG, "creating AudioRxPath...");
@@ -71,6 +75,7 @@ public class AudioRxPath {
                     playing();
                     ending();
                     reset();
+
                 }
 
                 cleanup();
@@ -123,6 +128,10 @@ public class AudioRxPath {
             mLock.unlock();
         }
         return res;
+    }
+
+    public void registerListener(Listener listener){
+        mListener = listener;
     }
 
     /** private methods  and members */
@@ -241,6 +250,10 @@ public class AudioRxPath {
         }
         drainDecodedAudio();
         drainAudioTrack();
+
+        if(mListener!=null){
+            mListener.audioEnd();
+        }
     }
 
     private void preloadTone(){
@@ -481,6 +494,8 @@ public class AudioRxPath {
     }
 
     private State mState;
+
+    private Listener mListener;
 
     private final Lock mLock = new ReentrantLock();
     private final Condition mAwaitFirst = mLock.newCondition();
