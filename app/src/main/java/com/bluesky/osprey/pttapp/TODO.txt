@@ -3,11 +3,11 @@ TODO list
 4) impl receiving;
     - tone generator (ok, but a little noisy)
     - tone generator (use hardcoded tone?)
-    - jitter buffer
+    - jitter buffer (done)
     - noise packet (done)
     - memory leak?
     - restart receiving (fixed)
-    - interrupt/abrupt stop?
+    - interrupt/abrupt stop (to rethrow interruptEx)
 
 5) impl group call at Trunk manager side;
 6) other signaling, as call reject, call hang, call competition?

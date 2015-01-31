@@ -430,7 +430,7 @@ public class AudioRxPath {
     }
 
     /** drain audio track according to # of pending samples
-     *
+     * TODO: prevent awaiting forever
      */
     private void drainAudioTrack(){
         while(true) {
