@@ -395,6 +395,7 @@ public class PTTSignaling extends Handler{
         public void entry() {
             Log.i(TAG, "Call receiving");
             mAudioRxPath = new AudioRxPath();
+            mAudioRxPath.registerListener(this);
             mUdpSwitcher.enableSwitch(true);
             mSavedHandler = mUdpService.setCompletionHandler(mUdpSwitcher);
         }
@@ -491,8 +492,8 @@ public class PTTSignaling extends Handler{
                     }
                     break;
                 case MSG_RXED_PACKET:
-//                    DatagramPacket packet = (DatagramPacket)message.obj;
-//                    handleRxedPacket(packet);
+                    DatagramPacket packet = (DatagramPacket)message.obj;
+                    handleRxedPacket(packet);
                     break;
             }
             return getState();
@@ -517,6 +518,19 @@ public class PTTSignaling extends Handler{
         }
 
         /** private methods and members */
+        private void handleRxedPacket(DatagramPacket packet){
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            if( protoType == ProtocolBase.PTYPE_CALL_INIT){
+                CallInit callInit =
+                        (CallInit)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+
+                //TODO: validate callInit
+                mState = State.CALL_RECEIVING;
+                Log.i(TAG, "received call init, target = " + callInit.getTargetId()
+                        + ", source = " + callInit.getSuid());
+            }
+        }
+
         TimerTask   mTimerTask;
         int         mCallTermCount = 0;
     }

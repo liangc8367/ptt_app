@@ -1,15 +1,14 @@
 TODO list
 ---------
+5) impl group call at Trunk manager side;
+    - echo cp, send audio per precise time
+
 4) impl receiving;
     - tone generator (ok, but a little noisy)
     - tone generator (use hardcoded tone?)
-    - jitter buffer (done)
-    - noise packet (done)
     - memory leak?
-    - restart receiving (fixed)
     - interrupt/abrupt stop (to rethrow interruptEx)
 
-5) impl group call at Trunk manager side;
 6) other signaling, as call reject, call hang, call competition?
 
 KNOWN ISSUES:
@@ -21,3 +20,6 @@ Done list
 1) graceful release resources after user clicked stop service; (done)
 2) launch PTT from SU side;
 3) impl a simulation SU at desktop side, and let it act as echoer;
+4) audio rx path   - restart receiving (fixed)
+    - jitter buffer (done)
+    - noise packet (done)
