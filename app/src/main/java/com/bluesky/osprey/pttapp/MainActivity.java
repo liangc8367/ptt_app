@@ -94,10 +94,18 @@ public class MainActivity extends ActionBarActivity {
 
     public void onStartTest(View view){
 //        startAudioRxPathTest();
+        if(mToneTest == null) {
+            mToneTest = new ToneTest2();
+        }
+        mToneTest.playTone();
     }
 
     public void onStopTest(View view){
 //        stopAudioRxPathTest();
+        if( mToneTest != null) {
+            mToneTest.release();
+            mToneTest = null;
+        }
     }
 
 //    private void startAudioRxPathTest(){
@@ -164,5 +172,7 @@ public class MainActivity extends ActionBarActivity {
 //    UDPService  mUdpService;
 //    AudioRxPath mAudioRxPath;
 //    UdpHandler  mUdpHandler;
+
+    ToneTest2 mToneTest;
 
 }

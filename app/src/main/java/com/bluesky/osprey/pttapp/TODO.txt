@@ -8,6 +8,7 @@ TODO list
     - tone generator (use hardcoded tone?)
     - memory leak?
     - interrupt/abrupt stop (to rethrow interruptEx)
+6) tone for Tx side: use tone generator, beep, ack, nack
 
 6) other signaling, as call reject, call hang, call competition?
 
