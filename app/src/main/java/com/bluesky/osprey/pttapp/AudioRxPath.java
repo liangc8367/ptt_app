@@ -227,7 +227,7 @@ public class AudioRxPath {
      *
      */
     private void playing() {
-        preloadTone(); // load 40ms start tone
+        loadTone(); // load 40ms start tone
 
         while(true){
             ByteBuffer receivedAudio = pollJitterBuffer();
@@ -256,7 +256,7 @@ public class AudioRxPath {
         }
     }
 
-    private void preloadTone(){
+    private void loadTone(){
         mAudioTrack.write(Tones.TONE_A, 0, Tones.TONE_A.length);
     }
 
@@ -414,6 +414,7 @@ public class AudioRxPath {
             mAudioTrack.write(mRawAudioData, 0, info.size);
 
             if( info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM ){
+                loadTone();
                 Log.w(TAG, "decoder egress EOF");
                 break;
             }
@@ -431,7 +432,8 @@ public class AudioRxPath {
     private void drainAudioTrack(){
         while(true) {
             int currentPos = mAudioTrack.getPlaybackHeadPosition();
-            int totalSamples = mPlayCount * AudioTrackConfiguration.AUDIO_PCM20MS_SAMPLES;
+            int totalSamples = mPlayCount * AudioTrackConfiguration.AUDIO_PCM20MS_SAMPLES
+                    + Tones.TONE_A_SAMPLES * 2;
             if( currentPos == 0 || currentPos >= totalSamples ){
                 Log.w(TAG, "draining audio track done! current pos =" + currentPos);
                 break;

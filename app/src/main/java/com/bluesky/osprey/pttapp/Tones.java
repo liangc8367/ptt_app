@@ -648,5 +648,6 @@ public class Tones {
             -19447,
             -12381,
     };
+    public static final int TONE_A_SAMPLES = TONE_A.length/2;
 
 }
