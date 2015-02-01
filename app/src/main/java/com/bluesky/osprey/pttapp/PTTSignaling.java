@@ -472,7 +472,7 @@ public class PTTSignaling extends Handler{
                         long delay;
                         if( mCallTermCount < GlobalConstants.CALL_TERMINATOR_NUMBER) {
                             sendCallTerminator(++mAudioTxSequence);
-                            delay = GlobalConstants.CALL_PACKET_INTERVAL;
+                            delay = GlobalConstants.CALL_PACKET_INTERVAL; //TODO: more precise
                         } else {
                             delay = GlobalConstants.CALL_HANG_PERIOD;
                         }
@@ -625,7 +625,7 @@ public class PTTSignaling extends Handler{
         public void entry() {
             Log.i(TAG, "Call transmitting...");
 
-            mAudioTxSequence = (short)(new Random()).nextInt();
+            mAudioTxSequence = 0; //(short)(new Random()).nextInt();
             // create encoder
             mAudioTxPath    = new AudioTxPath();
             mAudioTxPath.setCompletionHandler(new CompressedAudioHandler());
@@ -636,6 +636,7 @@ public class PTTSignaling extends Handler{
         public void exit() {
             // disable microphone lineup
             mAudioTxPath.stop();
+            Log.i(TAG, "transimitting done, sent =" + mAudioTxSequence);
         }
 
 
