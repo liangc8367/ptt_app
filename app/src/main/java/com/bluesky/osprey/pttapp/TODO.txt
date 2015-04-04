@@ -1,7 +1,10 @@
 TODO list
 ---------
+5) impl su simulator in java
+    - use state machine generator?
+
 5) impl group call at Trunk manager side;
-    - echo cp, send audio per precise time
+    - echo cp, send audio per precise time (done)
 
 4) impl receiving;
     - tone generator (ok, but a little noisy)
